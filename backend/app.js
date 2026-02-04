@@ -28,7 +28,23 @@ const app = express();
 
 // 1) GLOBAL MIDDLEWARES
 // Set security HTTP headers
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+        styleSrc: [
+          "'self'",
+          "https://cdnjs.cloudflare.com",
+          "'unsafe-inline'",
+        ],
+        imgSrc: ["'self'", "data:", "https://cdnjs.cloudflare.com"],
+        connectSrc: ["'self'"],
+      },
+    },
+  })
+);
 
 // Development logging
 if (process.env.NODE_ENV === 'development') {
