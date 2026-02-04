@@ -38,7 +38,18 @@ if (process.env.NODE_ENV === 'development') {
 // Implement CORS
 app.use(cors());
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css";
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerDocs, {
+    customCssUrl: CSS_URL,
+    customJs: [
+      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js",
+    ],
+  })
+);
 // Body parser, reading data from body into req.body
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));

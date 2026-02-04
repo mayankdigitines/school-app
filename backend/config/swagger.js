@@ -15,6 +15,11 @@ const swaggerOptions = {
     servers: [
       {
         url: 'http://localhost:5000/api/v1',
+        description: 'Local server'
+      },
+      {
+        url: 'https://school-app-backend-nu.vercel.app/api/v1',
+        description: 'Production server'
       }
     ],
     components: {
