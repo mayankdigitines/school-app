@@ -23,7 +23,7 @@ const noticeSchema = new mongoose.Schema({
   // Target Audience
   audience: {
     type: String,
-    enum: ['All', 'Teachers', 'Students', 'Class', 'Student'],
+    enum: ['All', 'Teachers', 'Students', 'Class', 'Student', 'Parents'],
     default: 'All',
   },
   // If audience is 'Class', specify which class

@@ -4,4 +4,4 @@
 .DS_Store
 /logs
 *.log
-/frontend
+npm-debug.log*

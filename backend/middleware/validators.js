@@ -40,7 +40,7 @@ export const validateLogin = [
 export const validateNotice = [
     body('title').notEmpty().withMessage('Notice title is required'),
     body('content').notEmpty().withMessage('Notice content is required'),
-    body('audience').optional().isIn(['All', 'Teachers', 'Students', 'Class', 'Student']).withMessage('Invalid audience'),
+    body('audience').optional().isIn(['All', 'Teachers', 'Students', 'Class', 'Student', 'Parents']).withMessage('Invalid audience'),
     
     body('targetClassId').custom((value, { req }) => {
         if (req.body.audience === 'Class' && !value) {

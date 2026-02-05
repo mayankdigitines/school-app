@@ -2,6 +2,8 @@ import express from 'express';
 import { 
     createSchool,
     getAllSchools,
+    getSchoolDetails,
+    updateSchoolDetails,
     addClass, 
     createTeacher, 
     getClasses, 
@@ -9,7 +11,9 @@ import {
     assignClassTeacher,
     updateTeacher,
     addSubject,
-    getSubjects
+    getSubjects,
+    broadcastMessage,
+    getHomeworkActivityLogs
 } from '../controllers/adminController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 
@@ -87,6 +91,52 @@ router.get('/schools', restrictTo('SuperAdmin'), getAllSchools);
 // Note: restrictTo can take multiple args, but here we strictly want SchoolAdmin.
 // Sometimes SuperAdmin might want to debug, but requirements separate them.
 router.use(restrictTo('SchoolAdmin'));
+
+/**
+ * @swagger
+ * /admin/school:
+ *   get:
+ *     summary: Get School Details (SchoolAdmin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: School details retrieved successfully
+ *       404:
+ *         description: School not found
+ *
+ *   patch:
+ *     summary: Update School Details (SchoolAdmin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               contactInfo:
+ *                 type: object
+ *                 properties:
+ *                   email:
+ *                     type: string
+ *                   phone:
+ *                     type: string
+ *                   address:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: School updated successfully
+ *       400:
+ *         description: Invalid input
+ */
+router.get('/school', getSchoolDetails);
+router.patch('/school', updateSchoolDetails);
 
 /**
  * @swagger
@@ -302,5 +352,56 @@ router.post('/add-subject', addSubject);
  *         description: List of subjects
  */
 router.get('/subjects', getSubjects);
+
+/**
+ * @swagger
+ * /admin/broadcast:
+ *   post:
+ *     summary: Broadcast message to Parents/Teachers
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - content
+ *             properties:
+ *               title:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               audience:
+ *                 type: string
+ *                 enum: ['Teachers', 'Parents', 'All']
+ *     responses:
+ *       201:
+ *         description: Notice broadcasted
+ */
+router.post('/broadcast', broadcastMessage);
+
+/**
+ * @swagger
+ * /admin/homework-logs:
+ *   get:
+ *     summary: View Homework Activity Logs
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: query
+ *         name: classId
+ *         schema:
+ *           type: string
+ *         description: Filter logs by Class ID
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Activity logs retrieved
+ */
+router.get('/homework-logs', getHomeworkActivityLogs);
 
 export default router;

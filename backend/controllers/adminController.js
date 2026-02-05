@@ -3,6 +3,8 @@ import Admin from '../models/Admin.js';
 import Class from '../models/Class.js';
 import Teacher from '../models/Teacher.js';
 import Subject from '../models/Subject.js';
+import Notice from '../models/Notice.js';
+import Homework from '../models/Homework.js';
 import AppError from '../utils/appError.js';
 import crypto from 'crypto';
 
@@ -94,6 +96,61 @@ export const getAllSchools = async (req, res, next) => {
 };
 
 // --- SCHOOL ADMIN CONTROLLERS ---
+
+export const getSchoolDetails = async (req, res, next) => {
+  try {
+    const schoolId = req.user.school;
+    
+    if (!schoolId) {
+      return next(new AppError('Admin does not belong to a school', 400));
+    }
+
+    const school = await School.findById(schoolId);
+    
+    if (!school) {
+        return next(new AppError('School not found', 404));
+    }
+    
+    res.status(200).json({
+        status: 'success',
+        data: { school }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSchoolDetails = async (req, res, next) => {
+    try {
+        const schoolId = req.user.school;
+
+        if (!schoolId) {
+          return next(new AppError('Admin does not belong to a school', 400));
+        }
+        
+        // 1. Filter out restricted fields (schoolCode) explicitly
+        // Although the schema might handle it, explicitly removing it is safer
+        const { schoolCode, ...updateData } = req.body; 
+
+        // 2. Update School
+        const updatedSchool = await School.findByIdAndUpdate(schoolId, updateData, {
+            new: true,
+            runValidators: true
+        });
+
+        if (!updatedSchool) {
+            return next(new AppError('School not found', 404));
+        }
+
+       res.status(200).json({
+            status: 'success',
+            data: { school: updatedSchool }
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
 
 export const addClass = async (req, res, next) => {
   try {
@@ -268,42 +325,114 @@ export const updateTeacher = async (req, res, next) => {
     }
 };
 
-export const addSubject = async (req, res, next) => {
-    try {
-        const { subName, subCode, sessions } = req.body;
-        const schoolId = req.user.school;
+// export const addSubject = async (req, res, next) => {
+//     try {
+//         const { subName, subCode, sessions } = req.body;
+//         const schoolId = req.user.school;
 
-        // Optional: Check if subject code already exists for this school (handled by index but good to have clear error)
+//         // Optional: Check if subject code already exists for this school (handled by index but good to have clear error)
         
-        const newSubject = await Subject.create({
-            subName,
-            subCode,
-            sessions,
-            school: schoolId,
+//         const newSubject = await Subject.create({
+//             subName,
+//             subCode,
+//             sessions,
+//             school: schoolId,
+//         });
+
+//         res.status(201).json({
+//             status: 'success',
+//             data: {
+//                 subject: newSubject,
+//             },
+//         });
+//     } catch (error) {
+//         if (error.code === 11000) {
+//             return next(new AppError('Subject with this code already exists', 400));
+//         }
+//         next(error);
+//     }
+// };
+
+
+// Add a new subject
+export const addSubject = async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ status: 'fail', message: 'Subject name is required.' });
+    }
+    // Ensure admin is linked to a school
+    const schoolId = req.user.school;
+    if (!schoolId) {
+      return res.status(400).json({ status: 'fail', message: 'School not found for admin.' });
+    }
+    // Check for duplicate subject name in the same school
+    const exists = await Subject.findOne({ name: name.trim(), school: schoolId });
+    if (exists) {
+      return res.status(409).json({ status: 'fail', message: 'Subject already exists.' });
+    }
+    const subject = await Subject.create({ name: name.trim(), school: schoolId });
+    res.status(201).json({ status: 'success', data: { subject } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get all subjects for the admin's school
+export const getSubjects = async (req, res, next) => {
+  try {
+    const schoolId = req.user.school;
+    const subjects = await Subject.find({ school: schoolId }).sort({ createdAt: -1 });
+    res.json({ status: 'success', results: subjects.length, data: { subjects } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const broadcastMessage = async (req, res, next) => {
+    try {
+        const { title, content, audience } = req.body;
+        
+        const newNotice = await Notice.create({
+            title,
+            content,
+            school: req.user.school,
+            audience: audience || 'All',
+            postedBy: {
+                userId: req.user._id,
+                role: 'SchoolAdmin',
+                name: req.user.name
+            }
         });
 
         res.status(201).json({
             status: 'success',
-            data: {
-                subject: newSubject,
-            },
+            data: { notice: newNotice }
         });
     } catch (error) {
-        if (error.code === 11000) {
-            return next(new AppError('Subject with this code already exists', 400));
-        }
         next(error);
     }
 };
 
-export const getSubjects = async (req, res, next) => {
+export const getHomeworkActivityLogs = async (req, res, next) => {
     try {
-        const subjects = await Subject.find({ school: req.user.school });
-        
+        const { classId } = req.query;
+        let filter = { school: req.user.school };
+
+        if (classId) {
+            filter.class = classId;
+        }
+
+        const homeworks = await Homework.find(filter)
+            .populate('teacher', 'name email')
+            .populate('subject', 'name')
+            .populate('class', 'grade section')
+            .sort({ createdAt: -1 });
+
         res.status(200).json({
             status: 'success',
-            results: subjects.length,
-            data: { subjects }
+            results: homeworks.length,
+            data: { homeworks }
         });
     } catch (error) {
         next(error);

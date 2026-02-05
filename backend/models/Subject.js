@@ -1,28 +1,23 @@
 import mongoose from 'mongoose';
 
 const subjectSchema = new mongoose.Schema({
-  subName: {
+  name: {
     type: String,
     required: true,
-  },
-  subCode: {
-    type: String,
-    required: true,
-  },
-  sessions: {
-    type: String,
-    required: true,
-    default: "0" 
+    trim: true,
   },
   school: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'School',
     required: true,
   },
-}, { timestamps: true });
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-// Ensure unique subject code per school
-subjectSchema.index({ school: 1, subCode: 1 }, { unique: true });
+subjectSchema.index({ name: 1, school: 1 }, { unique: true }); // Unique per school
 
 const Subject = mongoose.model('Subject', subjectSchema);
 export default Subject;

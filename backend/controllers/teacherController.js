@@ -1,4 +1,5 @@
 import Notice from '../models/Notice.js';
+import Homework from '../models/Homework.js';
 import StudentRequest from '../models/StudentRequest.js';
 import Student from '../models/Student.js';
 import AppError from '../utils/appError.js';
@@ -166,4 +167,33 @@ export const getClassStudents = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
+};
+
+export const createHomework = async (req, res, next) => {
+  try {
+    const { description, subjectId, classId, dueDate } = req.body;
+    
+    // Convert req.files to array of paths if using multer
+    let attachments = [];
+    if (req.files) {
+        attachments = req.files.map(file => file.path);
+    }
+
+    const newHomework = await Homework.create({
+      description,
+      subject: subjectId,
+      class: classId,
+      teacher: req.user._id,
+      school: req.user.school,
+      dueDate,
+      attachments
+    });
+
+    res.status(201).json({
+      status: 'success',
+      data: { homework: newHomework }
+    });
+  } catch (error) {
+    next(error);
+  }
 };

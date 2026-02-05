@@ -4,7 +4,8 @@ import {
     postNotice, 
     getPendingRequests, 
     handleStudentRequest,
-    getClassStudents
+    getClassStudents,
+    createHomework
 } from '../controllers/teacherController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 import upload from '../utils/fileUpload.js';
@@ -155,5 +156,45 @@ router.post('/requests/handle', handleStudentRequest);
  *                 $ref: '#/components/schemas/Student'
  */
 router.get('/students', getClassStudents);
+
+/**
+ * @swagger
+ * /teachers/homework:
+ *   post:
+ *     summary: Create a new homework
+ *     tags: [Teacher]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - description
+ *               - subjectId
+ *               - classId
+ *               - dueDate
+ *             properties:
+ *               description:
+ *                 type: string
+ *               subjectId:
+ *                 type: string
+ *               classId:
+ *                 type: string
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *               attachments:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       201:
+ *         description: Homework created
+ */
+router.post('/homework', upload.array('attachments', 5), createHomework);
 
 export default router;
