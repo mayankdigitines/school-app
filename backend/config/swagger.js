@@ -31,13 +31,13 @@ const swaggerOptions = {
         }
       },
       schemas: {
-        Error: {
-          type: 'object',
-          properties: {
-            status: { type: 'string' },
-            message: { type: 'string' }
-          }
-        },
+        // Error: {
+        //   type: 'object',
+        //   properties: {
+        //     status: { type: 'string' },
+        //     message: { type: 'string' }
+        //   }
+        // },
         School: {
           type: 'object',
           required: ['schoolCode', 'name'],

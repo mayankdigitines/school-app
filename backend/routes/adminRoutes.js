@@ -323,15 +323,9 @@ router.patch('/update-teacher/:teacherId', updateTeacher);
  *           schema:
  *             type: object
  *             required:
- *               - subName
- *               - subCode
- *               - sessions
+ *               - name
  *             properties:
- *               subName:
- *                 type: string
- *               subCode:
- *                 type: string
- *               sessions:
+ *               name:
  *                 type: string
  *     responses:
  *       201:
