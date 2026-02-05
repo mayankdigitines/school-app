@@ -23,6 +23,7 @@ import authRouter from './routes/authRoutes.js';
 import adminRouter from './routes/adminRoutes.js';
 import teacherRouter from './routes/teacherRoutes.js';
 import parentRouter from './routes/parentRoutes.js';
+import mongoose from 'mongoose';
 
 const app = express();
 
@@ -104,6 +105,17 @@ app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/teachers', teacherRouter);
 app.use('/api/v1/parents', parentRouter);
 // ... other routes
+
+app.get("/databasehealth", async (req, res) => {
+
+  const dbHealth = await mongoose.connection.db.admin().ping();
+
+  if (dbHealth.ok === 1) {
+    res.status(200).json({ status: 'success', message: 'Database connection is healthy' });
+  } else {
+    res.status(500).json({ status: 'error', message: 'Database connection is unhealthy' });
+  }
+});
 
 app.get('/', (req, res) => {
   res.send('School User API is running...');
