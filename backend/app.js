@@ -24,6 +24,7 @@ import adminRouter from './routes/adminRoutes.js';
 import teacherRouter from './routes/teacherRoutes.js';
 import parentRouter from './routes/parentRoutes.js';
 import mongoose from 'mongoose';
+import Admin from './models/Admin.js';
 
 const app = express();
 
@@ -107,13 +108,14 @@ app.use('/api/v1/parents', parentRouter);
 // ... other routes
 
 app.get("/databasehealth", async (req, res) => {
+  const admin = await Admin.find().limit(1).lean();
 
-  const dbHealth = await mongoose.connection.db.admin().ping();
+  console.log("Admin check:", admin);
 
-  if (dbHealth.ok === 1) {
-    res.status(200).json({ status: 'success', message: 'Database connection is healthy' });
+  if (admin) {
+    res.status(200).json({ status: "success", message: "Database is healthy" });
   } else {
-    res.status(500).json({ status: 'error', message: 'Database connection is unhealthy' });
+    res.status(500).json({ status: "error", message: "Database connection failed" });
   }
 });
 
