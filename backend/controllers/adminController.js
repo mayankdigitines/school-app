@@ -2,6 +2,7 @@ import School from '../models/School.js';
 import Admin from '../models/Admin.js';
 import Class from '../models/Class.js';
 import Teacher from '../models/Teacher.js';
+import Subject from '../models/Subject.js';
 import AppError from '../utils/appError.js';
 import crypto from 'crypto';
 
@@ -261,6 +262,48 @@ export const updateTeacher = async (req, res, next) => {
             data: {
                 teacher
             }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const addSubject = async (req, res, next) => {
+    try {
+        const { subName, subCode, sessions } = req.body;
+        const schoolId = req.user.school;
+
+        // Optional: Check if subject code already exists for this school (handled by index but good to have clear error)
+        
+        const newSubject = await Subject.create({
+            subName,
+            subCode,
+            sessions,
+            school: schoolId,
+        });
+
+        res.status(201).json({
+            status: 'success',
+            data: {
+                subject: newSubject,
+            },
+        });
+    } catch (error) {
+        if (error.code === 11000) {
+            return next(new AppError('Subject with this code already exists', 400));
+        }
+        next(error);
+    }
+};
+
+export const getSubjects = async (req, res, next) => {
+    try {
+        const subjects = await Subject.find({ school: req.user.school });
+        
+        res.status(200).json({
+            status: 'success',
+            results: subjects.length,
+            data: { subjects }
         });
     } catch (error) {
         next(error);

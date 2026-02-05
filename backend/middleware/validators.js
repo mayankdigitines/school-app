@@ -36,3 +36,32 @@ export const validateLogin = [
         next();
     }
 ];
+
+export const validateNotice = [
+    body('title').notEmpty().withMessage('Notice title is required'),
+    body('content').notEmpty().withMessage('Notice content is required'),
+    body('audience').optional().isIn(['All', 'Teachers', 'Students', 'Class', 'Student']).withMessage('Invalid audience'),
+    
+    body('targetClassId').custom((value, { req }) => {
+        if (req.body.audience === 'Class' && !value) {
+            throw new Error('Target Class ID is required when audience is Class');
+        }
+        return true;
+    }),
+    
+    body('targetStudentId').custom((value, { req }) => {
+        if (req.body.audience === 'Student' && !value) {
+            throw new Error('Target Student ID is required when audience is Student');
+        }
+        return true;
+    }),
+
+    (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            const msg = errors.array().map(err => err.msg).join('. ');
+            return next(new AppError(msg, 400));
+        }
+        next();
+    }
+];

@@ -8,6 +8,7 @@ import {
 } from '../controllers/teacherController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 import upload from '../utils/fileUpload.js';
+import { validateNotice } from '../middleware/validators.js';
 
 /**
  * @swagger
@@ -82,7 +83,7 @@ router.get('/notices', getTeacherNotices);
  *       201:
  *         description: Notice posted successfully
  */
-router.post('/notices', upload.array('attachments', 5), postNotice);
+router.post('/notices', upload.array('attachments', 5), validateNotice, postNotice);
 
 /**
  * @swagger

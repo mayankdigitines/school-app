@@ -34,11 +34,6 @@ export const postNotice = async (req, res, next) => {
     if (req.files) {
         attachments = req.files.map(file => file.path);
     }
-
-    // Validation: If audience is Class, need classId
-    if (audience === 'Class' && !targetClassId) {
-        return next(new AppError('Target Class ID is required for Class audience', 400));
-    }
     
     // Validation: If teacher tries to post to a class they aren't assigned to? 
     // Business logic: Can a teacher post to ANY class? Usually yes for "Substitute" reasons, 

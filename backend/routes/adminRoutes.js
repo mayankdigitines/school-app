@@ -7,7 +7,9 @@ import {
     getClasses, 
     getTeachers, 
     assignClassTeacher,
-    updateTeacher
+    updateTeacher,
+    addSubject,
+    getSubjects
 } from '../controllers/adminController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 
@@ -255,5 +257,50 @@ router.patch('/assign-class-teacher', assignClassTeacher);
  *         description: Teacher updated successfully
  */
 router.patch('/update-teacher/:teacherId', updateTeacher);
+
+/**
+ * @swagger
+ * /admin/add-subject:
+ *   post:
+ *     summary: Add a new subject
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - subName
+ *               - subCode
+ *               - sessions
+ *             properties:
+ *               subName:
+ *                 type: string
+ *               subCode:
+ *                 type: string
+ *               sessions:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Subject added successfully
+ */
+router.post('/add-subject', addSubject);
+
+/**
+ * @swagger
+ * /admin/subjects:
+ *   get:
+ *     summary: Get all subjects
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of subjects
+ */
+router.get('/subjects', getSubjects);
 
 export default router;
