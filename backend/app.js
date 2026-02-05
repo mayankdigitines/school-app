@@ -26,44 +26,25 @@ import parentRouter from './routes/parentRoutes.js';
 
 const app = express();
 
-// 1) GLOBAL MIDDLEWARES
-// Set security HTTP headers
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "https://cdnjs.cloudflare.com",
-          "'unsafe-inline'",
-        ],
-        styleSrc: [
-          "'self'",
-          "https://cdnjs.cloudflare.com",
-          "'unsafe-inline'",
-        ],
-        imgSrc: ["'self'", "data:", "https://cdnjs.cloudflare.com"],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "data:"],
-      },
-    },
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: false,
-  })
-);
-
-// Development logging
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
-
 // Implement CORS
 app.use(cors({
   origin: "*",
   methods: "*",
   allowedHeaders: "*",
 }));
+
+// 1) GLOBAL MIDDLEWARES
+// Set security HTTP headers
+if (process.env.NODE_ENV === 'production') {
+  app.use(
+  helmet()
+);
+}
+
+// Development logging
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
 
 const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css";
 app.use(
