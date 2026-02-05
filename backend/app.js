@@ -59,13 +59,11 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Implement CORS
-app.use(cors());
-
-// app.use(cors({
-//   origin: ['https://school-app-backend-nu.vercel.app/api/v1'], // Add your deployed frontend domain
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   credentials: true
-// }));
+app.use(cors({
+  origin: "*",
+  methods: "*",
+  allowedHeaders: "*",
+}));
 
 const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css";
 app.use(
