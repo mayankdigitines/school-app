@@ -31,12 +31,15 @@ const createSendToken = (user, role, statusCode, res) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { username, password, role } = req.body;
+    let { username, password, role } = req.body;
 
     // 1) Check if email/phone and password exist
     if (!username || !password || !role) {
       return next(new AppError('Please provide username, password and role', 400));
     }
+
+    username = username.trim();
+    role = role.trim();
 
     let user;
     let isMatch = false;

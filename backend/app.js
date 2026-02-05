@@ -33,7 +33,11 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+        scriptSrc: [
+          "'self'",
+          "https://cdnjs.cloudflare.com",
+          "'unsafe-inline'",
+        ],
         styleSrc: [
           "'self'",
           "https://cdnjs.cloudflare.com",
@@ -41,8 +45,11 @@ app.use(
         ],
         imgSrc: ["'self'", "data:", "https://cdnjs.cloudflare.com"],
         connectSrc: ["'self'"],
+        fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "data:"],
       },
     },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: false,
   })
 );
 
@@ -64,6 +71,11 @@ app.use(
       "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js",
       "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js",
     ],
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'none',
+    },
+    customSiteTitle: "School App API Docs"
   })
 );
 // Body parser, reading data from body into req.body
