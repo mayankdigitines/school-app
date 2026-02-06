@@ -13,7 +13,10 @@ import {
     addSubject,
     getSubjects,
     broadcastMessage,
-    getHomeworkActivityLogs
+    getHomeworkActivityLogs,
+    assignSubjectTeacher,
+    assignSubjectLoad,
+getNotices
 } from '../controllers/adminController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 
@@ -91,6 +94,54 @@ router.get('/schools', restrictTo('SuperAdmin'), getAllSchools);
 // Note: restrictTo can take multiple args, but here we strictly want SchoolAdmin.
 // Sometimes SuperAdmin might want to debug, but requirements separate them.
 router.use(restrictTo('SchoolAdmin'));
+
+/**
+ * @swagger
+ * /admin/assign-subject-teacher:
+ *   post:
+ *     summary: Assign a teacher to teach a subject in a specific class
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - classId
+ *               - subjectId
+ *               - teacherId
+ *             properties:
+ *               classId:
+ *                 type: string
+ *               subjectId:
+ *                 type: string
+ *               teacherId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Teacher assigned to subject in class
+ */
+router.post('/assign-subject-teacher', assignSubjectTeacher);
+
+/**
+ * @swagger
+ * /admin/assign-subject-load:
+ * post:
+ * summary: Assign a teacher to teach a subject to multiple classes
+ * tags: [Admin]
+ * requestBody:
+ * required: true
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * required: [teacherId, subjectId, classIds]
+ */
+router.post('/assign-subject-load', assignSubjectLoad);
+
+
+// ...
 
 /**
  * @swagger
@@ -378,6 +429,8 @@ router.get('/subjects', getSubjects);
  */
 router.post('/broadcast', broadcastMessage);
 
+
+router.get('/notices', getNotices);
 /**
  * @swagger
  * /admin/homework-logs:

@@ -184,7 +184,7 @@ export const addClass = async (req, res, next) => {
   }
 };
 
-export const createTeacher = async (req, res, next) => {
+export const createTeacher = async (req, res, next)=> {
   try {
     const { name, email, password, subjects, phone } = req.body;
     const schoolId = req.user.school;
@@ -228,9 +228,48 @@ export const getTeachers = async (req, res, next) => {
     }
 };
 
+// export const getClasses = async (req, res, next) => {
+//     try {
+//         const classes = await Class.find({ school: req.user.school }).populate('classTeacher', 'name email');
+        
+//         res.status(200).json({
+//             status: 'success',
+//             results: classes.length,
+//             data: { classes }
+//         });
+//     } catch (error) {
+//         next(error);
+//     }
+// };
+
+// add getClasses to include population of subjectTeachers if you want to display it
+
+// export const getClasses = async (req, res, next) => {
+//     try {
+//         const classes = await Class.find({ school: req.user.school })
+//             .populate('classTeacher', 'name email')
+//             .populate('subjectTeachers.teacher', 'name') // Populate teacher details
+//             .populate('subjectTeachers.subject', 'name'); // Populate subject details
+        
+//         res.status(200).json({
+//             status: 'success',
+//             results: classes.length,
+//             data: { classes }
+//         });
+//     } catch (error) {
+//         next(error);
+//     }
+// };
+
+
+
+// 1. GET CLASSES (Updated to populate schedule)
 export const getClasses = async (req, res, next) => {
     try {
-        const classes = await Class.find({ school: req.user.school }).populate('classTeacher', 'name email');
+        const classes = await Class.find({ school: req.user.school })
+            .populate('classTeacher', 'name email')
+            .populate('subjectTeachers.teacher', 'name')
+            .populate('subjectTeachers.subject', 'name');
         
         res.status(200).json({
             status: 'success',
@@ -243,53 +282,195 @@ export const getClasses = async (req, res, next) => {
 };
 
 // Assign a teacher to a class (Class Teacher)
+// export const assignClassTeacher = async (req, res, next) => {
+  
+// 1. STRICT UNIQUE CLASS TEACHER ASSIGNMENT
+// export const assignClassTeacher = async (req, res, next) => {
+//   try {
+//     const { teacherId, classId } = req.body;
+//     const schoolId = req.user.school;
+
+//     const teacher = await Teacher.findOne({ _id: teacherId, school: schoolId });
+//     if (!teacher) return next(new AppError('Teacher not found', 404));
+
+//     const classObj = await Class.findOne({ _id: classId, school: schoolId });
+//     if (!classObj) return next(new AppError('Class not found', 404));
+
+//     // A. Clean up the Class: If this class already has a teacher, remove that teacher's assignment
+//     if (classObj.classTeacher && classObj.classTeacher.toString() !== teacherId) {
+//         const oldTeacher = await Teacher.findById(classObj.classTeacher);
+//         if (oldTeacher) {
+//             oldTeacher.assignedClass = null;
+//             oldTeacher.isClassTeacher = false;
+//             await oldTeacher.save();
+//         }
+//     }
+
+//     // B. Clean up the Teacher: If this teacher is already a Class Teacher elsewhere, remove that link
+//     if (teacher.assignedClass && teacher.assignedClass.toString() !== classId) {
+//         const oldClass = await Class.findById(teacher.assignedClass);
+//         if (oldClass) {
+//             oldClass.classTeacher = null;
+//             await oldClass.save();
+//         }
+//     }
+
+//     // C. Create the new Link
+//     classObj.classTeacher = teacher._id;
+//     await classObj.save();
+
+//     teacher.assignedClass = classObj._id;
+//     teacher.isClassTeacher = true;
+//     await teacher.save();
+
+//     res.status(200).json({
+//       status: 'success',
+//       message: 'Class teacher assigned successfully (Previous assignments updated)',
+//       data: { class: classObj, teacher }
+//     });
+
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
+
+
+// 2. ASSIGN CLASS TEACHER (Strict Logic)
 export const assignClassTeacher = async (req, res, next) => {
   try {
     const { teacherId, classId } = req.body;
     const schoolId = req.user.school;
 
-    // 1. Verify Teacher belongs to this school
     const teacher = await Teacher.findOne({ _id: teacherId, school: schoolId });
-    if (!teacher) return next(new AppError('Teacher not found in this school', 404));
+    if (!teacher) return next(new AppError('Teacher not found', 404));
 
-    // 2. Verify Class belongs to this school
     const classObj = await Class.findOne({ _id: classId, school: schoolId });
-    if (!classObj) return next(new AppError('Class not found in this school', 404));
+    if (!classObj) return next(new AppError('Class not found', 404));
 
-    // 3. Update Class
+    // STRICT CHECK: Cannot replace existing Class Teacher
+    if (classObj.classTeacher && classObj.classTeacher.toString() !== teacherId) {
+        return next(new AppError(`Class ${classObj.grade}-${classObj.section} already has a Class Teacher assigned. You cannot replace them directly.`, 409));
+    }
+
+    // CHECK: Teacher already assigned to another class?
+    if (teacher.assignedClass && teacher.assignedClass.toString() !== classId) {
+         return next(new AppError(`Teacher ${teacher.name} is already a Class Teacher for another class. Unassign them first.`, 409));
+    }
+
+    // Assign
     classObj.classTeacher = teacher._id;
     await classObj.save();
 
-    // 4. Update Teacher
-    // First, unassign if they were assigned elsewhere? Requirements don't specify strict 1-1, but usually yes.
-    // Let's assume a teacher can be class teacher for only one class at a time for simplicity.
-    // If they were class teacher of another class, we should unset that? 
-    // Implementation: simple update for now.
-    
-    // If teacher was already assigned a class, we might need to clear that previous class's teacher field?
-    // This part can get complex. Let's keep it simple: Just set the reference.
-    if (teacher.assignedClass && teacher.assignedClass.toString() !== classId) {
-        // Optional: clear previous class link
-        await Class.findByIdAndUpdate(teacher.assignedClass, { classTeacher: null });
-    }
-    
     teacher.assignedClass = classObj._id;
     teacher.isClassTeacher = true;
     await teacher.save();
 
     res.status(200).json({
       status: 'success',
-      message: 'Class teacher assigned successfully',
-      data: {
-        class: classObj,
-        teacher: teacher
-      }
+      message: 'Class Teacher assigned successfully',
+      data: { class: classObj }
     });
 
   } catch (error) {
     next(error);
   }
 };
+
+
+// 3. ASSIGN TEACHING LOAD (Multiple Classes Support)
+export const assignSubjectLoad = async (req, res, next) => {
+    try {
+        const { teacherId, subjectId, classIds } = req.body; // classIds is an Array
+        const schoolId = req.user.school;
+
+        if (!Array.isArray(classIds) || classIds.length === 0) {
+            return next(new AppError('Please provide a list of classes.', 400));
+        }
+
+        const teacher = await Teacher.findOne({ _id: teacherId, school: schoolId });
+        if (!teacher) return next(new AppError('Teacher not found', 404));
+
+        // Iterate over classes and update them
+        const updatePromises = classIds.map(async (classId) => {
+            const classObj = await Class.findOne({ _id: classId, school: schoolId });
+            if (classObj) {
+                // Remove existing teacher for this specific subject to avoid duplicates
+                // (We replace the teacher for this subject in this class)
+                classObj.subjectTeachers = classObj.subjectTeachers.filter(
+                    entry => entry.subject.toString() !== subjectId
+                );
+
+                // Add new assignment
+                classObj.subjectTeachers.push({
+                    subject: subjectId,
+                    teacher: teacherId
+                });
+
+                return classObj.save();
+            }
+        });
+
+        await Promise.all(updatePromises);
+
+        res.status(200).json({
+            status: 'success',
+            message: `Assigned ${teacher.name} to teach the subject in ${classIds.length} classes.`,
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+
+
+// 2. NEW: ASSIGN TEACHER TO A SUBJECT IN A CLASS (Teaching Load)
+export const assignSubjectTeacher = async (req, res, next) => {
+    try {
+        const { classId, subjectId, teacherId } = req.body;
+        const schoolId = req.user.school;
+
+        // Verify entities exist and belong to school
+        const classObj = await Class.findOne({ _id: classId, school: schoolId });
+        if (!classObj) return next(new AppError('Class not found', 404));
+
+        const teacher = await Teacher.findOne({ _id: teacherId, school: schoolId });
+        if (!teacher) return next(new AppError('Teacher not found', 404));
+
+        // Check if subject exists (Optional: verify teacher is "qualified" for this subject if you strictly enforce it)
+        // For flexibility, we allow admin to override.
+        
+        // Remove existing teacher for this specific subject in this class (if any)
+        // Filter out the subject if it already exists to avoid duplicates
+        classObj.subjectTeachers = classObj.subjectTeachers.filter(
+            entry => entry.subject.toString() !== subjectId
+        );
+
+        // Add new assignment
+        classObj.subjectTeachers.push({
+            subject: subjectId,
+            teacher: teacherId
+        });
+
+        await classObj.save();
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Subject teacher assigned successfully',
+            data: { class: classObj }
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+
+
 // School Admin can edit teacher detail and update password subjects and classes
 
 export const updateTeacher = async (req, res, next) => {
@@ -482,6 +663,19 @@ export const getHomeworkActivityLogs = async (req, res, next) => {
             status: 'success',
             results: homeworks.length,
             data: { homeworks }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+// get all broadcast notices for the admin's school
+export const getNotices = async (req, res, next) => {
+    try {
+        const notices = await Notice.find({ school: req.user.school }).sort({ createdAt: -1 });
+        res.status(200).json({
+            status: 'success',
+            results: notices.length,
+            data: { notices }
         });
     } catch (error) {
         next(error);
