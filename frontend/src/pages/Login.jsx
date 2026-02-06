@@ -1,101 +1,227 @@
+// import { useState } from 'react';
+// import { useAuth } from '../context/AuthContext';
+// import { useNavigate } from 'react-router-dom';
+// import { Button } from '@/components/ui/button';
+// import { Input } from '@/components/ui/input';
+// import { Label } from '@/components/ui/label';
+// import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// import { toast } from 'sonner';
+
+// const Login = () => {
+//   const { login } = useAuth();
+//   const navigate = useNavigate();
+//   const [formData, setFormData] = useState({
+//     username: '',
+//     password: '',
+//     role: 'SchoolAdmin' // Default to SchoolAdmin as per requirements emphasis
+//   });
+//   const [loading, setLoading] = useState(false);
+
+//   const handleChange = (e) => {
+//     setFormData({ ...formData, [e.target.name]: e.target.value });
+//   };
+  
+//   const handleRoleChange = (value) => {
+//     setFormData({ ...formData, role: value });
+//   };
+
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     setLoading(true);
+//     try {
+//       await login(formData.username, formData.password, formData.role);
+//       toast.success('Login successful');
+//       navigate('/dashboard');
+//     } catch (error) {
+//        console.error(error);
+//        toast.error(error.response?.data?.message || 'Login failed');
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   return (
+//     <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+//       <Card className="w-full max-w-md">
+//         <CardHeader>
+//           <CardTitle className="text-2xl text-center">School Admin Login</CardTitle>
+//           <CardDescription className="text-center">Enter your credentials to access the dashboard</CardDescription>
+//         </CardHeader>
+//         <CardContent>
+//           <form onSubmit={handleSubmit} className="space-y-4">
+//             <div className="space-y-2">
+//               <Label htmlFor="role">Role</Label>
+//               <Select defaultValue={formData.role} onValueChange={handleRoleChange}>
+//                 <SelectTrigger>
+//                   <SelectValue placeholder="Select Role" />
+//                 </SelectTrigger>
+//                 <SelectContent>
+//                   <SelectItem value="SchoolAdmin">School Admin</SelectItem>
+//                   {/* <SelectItem value="Teacher">Teacher</SelectItem>
+//                   <SelectItem value="Parent">Parent</SelectItem> 
+//                   Focusing on School Admin as requested */}
+//                 </SelectContent>
+//               </Select>
+//             </div>
+            
+//             <div className="space-y-2">
+//               <Label htmlFor="username">Email / Username</Label>
+//               <Input 
+//                 id="username" 
+//                 name="username" 
+//                 type="text" 
+//                 placeholder="admin@school.com" 
+//                 value={formData.username} 
+//                 onChange={handleChange}
+//                 required 
+//               />
+//             </div>
+            
+//             <div className="space-y-2">
+//               <Label htmlFor="password">Password</Label>
+//               <Input 
+//                 id="password" 
+//                 name="password" 
+//                 type="password" 
+//                 placeholder="••••••••" 
+//                 value={formData.password} 
+//                 onChange={handleChange}
+//                 required 
+//               />
+//             </div>
+            
+//             <Button type="submit" className="w-full" disabled={loading}>
+//               {loading ? 'Logging in...' : 'Login'}
+//             </Button>
+//           </form>
+//         </CardContent>
+//       </Card>
+//     </div>
+//   );
+// };
+
+// export default Login;
+
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { Loader2, ShieldCheck, GraduationCap, School, Users } from 'lucide-react';
 
-const Login = () => {
-  const { login } = useAuth();
+// Map roles to specific icons and titles for a better UI experience
+const ROLE_CONFIG = {
+  SuperAdmin: { title: "Super Admin Portal", icon: ShieldCheck, color: "text-red-600" },
+  SchoolAdmin: { title: "School Admin Login", icon: Building2, color: "text-blue-600" }, // Ensure Building2 is imported or use School
+  Teacher: { title: "Teacher Portal", icon: GraduationCap, color: "text-green-600" },
+  Parent: { title: "Parent Access", icon: Users, color: "text-purple-600" },
+};
+
+// Fallback icon if needed
+import { Building2 } from 'lucide-react';
+
+const Login = ({ allowedRole }) => {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    role: 'SchoolAdmin' // Default to SchoolAdmin as per requirements emphasis
   });
-  const [loading, setLoading] = useState(false);
+
+  const config = allowedRole ? ROLE_CONFIG[allowedRole] : { title: "Login", icon: School, color: "text-slate-900" };
+  const Icon = config.icon;
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-  
-  const handleRoleChange = (value) => {
-    setFormData({ ...formData, role: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      await login(formData.username, formData.password, formData.role);
-      toast.success('Login successful');
-      navigate('/dashboard');
+      // Use the fixed role if provided, otherwise generic login (though generic is removed per your request)
+      const roleToSubmit = allowedRole; 
+
+      if (!roleToSubmit) {
+          toast.error("Invalid login configuration.");
+          setLoading(false);
+          return;
+      }
+
+      await login(formData.username, formData.password, roleToSubmit);
+      toast.success(`Welcome back!`);
+      
+      // Intelligent Redirect based on Role
+      if (roleToSubmit === 'SuperAdmin') navigate('/super-admin/schools');
+      else if (roleToSubmit === 'SchoolAdmin') navigate('/dashboard');
+      else if (roleToSubmit === 'Teacher') navigate('/teacher/dashboard'); // Example route
+      else if (roleToSubmit === 'Parent') navigate('/parent/dashboard');   // Example route
+      else navigate('/');
+
     } catch (error) {
-       console.error(error);
-       toast.error(error.response?.data?.message || 'Login failed');
+      console.error(error);
+      toast.error(error.response?.data?.message || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">School Admin Login</CardTitle>
-          <CardDescription className="text-center">Enter your credentials to access the dashboard</CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
+      <Card className="w-full max-w-md shadow-lg border-0 sm:border">
+        <CardHeader className="text-center space-y-2">
+            <div className={`mx-auto p-3 bg-white rounded-full shadow-sm w-fit ${config.color}`}>
+                <Icon size={32} />
+            </div>
+          <CardTitle className="text-2xl font-bold">{config.title}</CardTitle>
+          <CardDescription>Enter your credentials to access the panel.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select defaultValue={formData.role} onValueChange={handleRoleChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SchoolAdmin">School Admin</SelectItem>
-                  {/* <SelectItem value="Teacher">Teacher</SelectItem>
-                  <SelectItem value="Parent">Parent</SelectItem> 
-                  Focusing on School Admin as requested */}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
               <Label htmlFor="username">Email / Username</Label>
-              <Input 
-                id="username" 
-                name="username" 
-                type="text" 
-                placeholder="admin@school.com" 
-                value={formData.username} 
+              <Input
+                id="username"
+                name="username"
+                type="text"
+                placeholder={allowedRole === 'Parent' ? "Phone Number" : "name@example.com"}
+                value={formData.username}
                 onChange={handleChange}
-                required 
+                required
               />
             </div>
-            
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                name="password" 
-                type="password" 
-                placeholder="••••••••" 
-                value={formData.password} 
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                value={formData.password}
                 onChange={handleChange}
-                required 
+                required
               />
             </div>
             
+            {/* Hidden Submit Button for accessibility */}
+            <button type="submit" className="hidden" disabled={loading} />
+            
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Authenticating...</> : 'Sign In'}
             </Button>
           </form>
         </CardContent>
+        <CardFooter className="flex justify-center border-t p-4 bg-slate-50/50">
+            <p className="text-xs text-slate-500">
+                Secure {allowedRole} Access
+            </p>
+        </CardFooter>
       </Card>
     </div>
   );

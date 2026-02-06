@@ -325,7 +325,6 @@ export const updateTeacher = async (req, res, next) => {
     }
 };
 
-// export const addSubject = async (req, res, next) => {
 //     try {
 //         const { subName, subCode, sessions } = req.body;
 //         const schoolId = req.user.school;
@@ -355,29 +354,79 @@ export const updateTeacher = async (req, res, next) => {
 
 
 // Add a new subject
+// export const addSubject = async (req, res, next) => {
+//   try {
+//     const { name } = req.body;
+//     if (!name || !name.trim()) {
+//       return res.status(400).json({ status: 'fail', message: 'Subject name is required.' });
+//     }
+//     // Ensure admin is linked to a school
+//     const schoolId = req.user.school;
+//     if (!schoolId) {
+//       return res.status(400).json({ status: 'fail', message: 'School not found for admin.' });
+//     }
+//     // Check for duplicate subject name in the same school
+//     const exists = await Subject.findOne({ name: name.trim(), school: schoolId });
+//     if (exists) {
+//       return res.status(409).json({ status: 'fail', message: 'Subject already exists.' });
+//     }
+//     const subject = await Subject.create({ name: name.trim(), school: schoolId });
+//     res.status(201).json({ status: 'success', data: { subject } });
+//   } catch (err) {
+//     next(err);
+//   }
+// };
+
+
+
+// Optimized addSubject Controller
 export const addSubject = async (req, res, next) => {
   try {
     const { name } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({ status: 'fail', message: 'Subject name is required.' });
+    
+    // 1. Input Validation
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ 
+        status: 'fail', 
+        message: 'Subject name is required and must be a valid string.' 
+      });
     }
-    // Ensure admin is linked to a school
+
     const schoolId = req.user.school;
     if (!schoolId) {
-      return res.status(400).json({ status: 'fail', message: 'School not found for admin.' });
+      return res.status(400).json({ status: 'fail', message: 'School context missing for admin.' });
     }
-    // Check for duplicate subject name in the same school
-    const exists = await Subject.findOne({ name: name.trim(), school: schoolId });
-    if (exists) {
-      return res.status(409).json({ status: 'fail', message: 'Subject already exists.' });
+
+    // 2. Normalize Data (Capitalize first letter, trim)
+    const normalizedName = name.trim();
+
+    // 3. Create Subject
+    // We rely on the model's unique index { name: 1, school: 1 } to prevent duplicates.
+    // This is more efficient than doing a .findOne() first.
+    const subject = await Subject.create({ 
+      name: normalizedName, 
+      school: schoolId 
+    });
+
+    res.status(201).json({ 
+      status: 'success', 
+      data: { subject } 
+    });
+
+  } catch (error) {
+    // 4. Handle Duplicate Error Specific to Subjects
+    if (error.code === 11000) {
+      // Check if the error is about the Name field (which is our new constraint)
+      if (error.keyPattern && error.keyPattern.name) {
+         return res.status(409).json({ 
+           status: 'fail', 
+           message: `The subject "${req.body.name}" already exists in this school.` 
+         });
+      }
     }
-    const subject = await Subject.create({ name: name.trim(), school: schoolId });
-    res.status(201).json({ status: 'success', data: { subject } });
-  } catch (err) {
-    next(err);
+    next(error);
   }
 };
-
 // Get all subjects for the admin's school
 export const getSubjects = async (req, res, next) => {
   try {

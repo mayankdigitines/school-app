@@ -46,7 +46,20 @@ console.log("subjects", subjects);
     }
   };
 
-  const handleCreate = async (e) => {
+  // const handleCreate = async (e) => {
+  //   e.preventDefault();
+  //   try {
+  //     await api.post('/admin/add-subject', formData);
+  //     toast.success('Subject added successfully');
+  //     setIsDialogOpen(false);
+  //     setFormData({ name: '' });
+  //     fetchSubjects(); 
+  //   } catch (error) {
+  //     console.error(error);
+  //     toast.error(error.response?.data?.message || 'Failed to add subject');
+  //   }
+  // };
+const handleCreate = async (e) => {
     e.preventDefault();
     try {
       await api.post('/admin/add-subject', formData);
@@ -55,11 +68,12 @@ console.log("subjects", subjects);
       setFormData({ name: '' });
       fetchSubjects(); 
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Failed to add subject');
+      console.error("Error adding subject:", error);
+      // Detailed error extraction
+      const errorMessage = error.response?.data?.message || 'Failed to add subject';
+      toast.error(errorMessage);
     }
   };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">

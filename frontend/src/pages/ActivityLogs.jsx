@@ -19,17 +19,19 @@ const ActivityLogs = () => {
     
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-console.log('ActivityLogs component rendered. Logs state:', logs); 
   useEffect(() => {
     fetchLogs();
   }, []);
+
+
+  console.log(logs);
 
   const fetchLogs = async () => {
     try {
       const response = await api.get('/admin/homework-logs');
       // Verify response structure
       // controller: res.status(200).json({ status: 'success', results: logs.length, data: { logs } });
-      setLogs(response.data.data?.logs || []);
+      setLogs(response.data?.data?.homeworks || []);
       setLoading(false);
     } catch (error) {
       console.error(error);
@@ -60,7 +62,7 @@ console.log('ActivityLogs component rendered. Logs state:', logs);
                 <TableHead>Due Date</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            {/* <TableBody>
               {logs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
@@ -85,7 +87,45 @@ console.log('ActivityLogs component rendered. Logs state:', logs);
                   </TableRow>
                 ))
               )}
-            </TableBody>
+            </TableBody> */}
+         
+<TableBody>
+  {logs.length === 0 ? (
+    <TableRow>
+      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+        No activity logs found.
+      </TableCell>
+    </TableRow>
+  ) : (
+    logs.map((log) => (
+      <TableRow key={log._id}>
+        <TableCell>
+          {log.createdAt ? new Date(log.createdAt).toLocaleDateString() : 'Unknown'}
+        </TableCell>
+        <TableCell className="font-medium">
+          {log.teacher && log.teacher.name ? log.teacher.name : 'Unknown'}
+        </TableCell>
+        <TableCell>
+          {log.subject && log.subject.name ? log.subject.name : 'N/A'}
+        </TableCell>
+        <TableCell>
+          <div className="max-w-50 truncate" title={log.description || ''}>
+            {log.description || 'No Description'}
+          </div>
+        </TableCell>
+        <TableCell>
+          {log.class && log.class.grade && log.class.section
+            ? `${log.class.grade} - ${log.class.section}`
+            : 'N/A'}
+        </TableCell>
+        <TableCell>
+          {log.dueDate ? new Date(log.dueDate).toLocaleDateString() : 'No Due Date'}
+        </TableCell>
+      </TableRow>
+    ))
+  )}
+</TableBody>
+
           </Table>
           
           <div className="p-4 text-xs text-muted-foreground text-center">
