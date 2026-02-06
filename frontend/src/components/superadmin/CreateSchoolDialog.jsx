@@ -67,7 +67,7 @@ const CreateSchoolDialog = ({ onSchoolCreated }) => {
             <Plus size={18} /> Add New School
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New School</DialogTitle>
           <DialogDescription>
