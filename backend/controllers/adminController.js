@@ -505,8 +505,7 @@ export const updateTeacher = async (req, res, next) => {
         next(error);
     }
 };
-
-//     try {
+// add subject controller with unique constraint on subject name within the same school
 //         const { subName, subCode, sessions } = req.body;
 //         const schoolId = req.user.school;
 
@@ -527,37 +526,7 @@ export const updateTeacher = async (req, res, next) => {
 //         });
 //     } catch (error) {
 //         if (error.code === 11000) {
-//             return next(new AppError('Subject with this code already exists', 400));
-//         }
-//         next(error);
-//     }
-// };
-
-
-// Add a new subject
-// export const addSubject = async (req, res, next) => {
-//   try {
-//     const { name } = req.body;
-//     if (!name || !name.trim()) {
-//       return res.status(400).json({ status: 'fail', message: 'Subject name is required.' });
-//     }
-//     // Ensure admin is linked to a school
-//     const schoolId = req.user.school;
-//     if (!schoolId) {
-//       return res.status(400).json({ status: 'fail', message: 'School not found for admin.' });
-//     }
-//     // Check for duplicate subject name in the same school
-//     const exists = await Subject.findOne({ name: name.trim(), school: schoolId });
-//     if (exists) {
-//       return res.status(409).json({ status: 'fail', message: 'Subject already exists.' });
-//     }
-//     const subject = await Subject.create({ name: name.trim(), school: schoolId });
-//     res.status(201).json({ status: 'success', data: { subject } });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
+//          
 
 
 // Optimized addSubject Controller
