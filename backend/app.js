@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import globalErrorHandler from './middleware/errorController.js';
+// import globalErrorHandler from './middleware/errorController.js';
 import AppError from './utils/appError.js';
 // import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
@@ -130,6 +130,6 @@ app.use((req, res, next) => {
 });
 
 // 3) GLOBAL ERROR HANDLING MIDDLEWARE
-app.use(globalErrorHandler);
+// app.use(globalErrorHandler);
 
 export default app;
