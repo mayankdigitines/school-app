@@ -7,11 +7,11 @@ import { fileURLToPath } from 'url';
 
 // import globalErrorHandler from './middleware/errorController.js';
 import AppError from './utils/appError.js';
-// import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-// import swaggerOptions from './config/swagger.js';
+import swaggerOptions from './config/swagger.js';
 
-// const swaggerDocs = swaggerJsdoc(swaggerOptions);
+const swaggerDocs = swaggerJsdoc(swaggerOptions);
 
 // Resolve __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -71,27 +71,27 @@ app.use(cors({
  */
 
 // // Development logging
-// if (process.env.NODE_ENV === 'development') {
-//   app.use(morgan('dev'));
-// }
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
 
-// const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css";
-// app.use(
-//   '/api-docs',
-//   swaggerUi.serve,
-//   swaggerUi.setup(swaggerDocs, {
-//     customCssUrl: CSS_URL,
-//     customJs: [
-//       "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js",
-//       "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js",
-//     ],
-//     swaggerOptions: {
-//       persistAuthorization: true,
-//       docExpansion: 'none',
-//     },
-//     customSiteTitle: "School App API Docs"
-//   })
-// );
+const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css";
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerDocs, {
+    customCssUrl: CSS_URL,
+    customJs: [
+      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js",
+    ],
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'none',
+    },
+    customSiteTitle: "School App API Docs"
+  })
+);
 
 // Body parser, reading data from body into req.body
 app.use(express.json({ limit: '10kb' }));
