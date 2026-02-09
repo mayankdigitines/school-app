@@ -127,16 +127,33 @@ router.post('/assign-subject-teacher', assignSubjectTeacher);
 /**
  * @swagger
  * /admin/assign-subject-load:
- * post:
- * summary: Assign a teacher to teach a subject to multiple classes
- * tags: [Admin]
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * type: object
- * required: [teacherId, subjectId, classIds]
+ *   post:
+ *     summary: Assign a teacher to teach a subject to multiple classes
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teacherId
+ *               - subjectId
+ *               - classIds
+ *             properties:
+ *               teacherId:
+ *                 type: string
+ *               subjectId:
+ *                 type: string
+ *               classIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Teacher assigned to subject in multiple classes
  */
 router.post('/assign-subject-load', assignSubjectLoad);
 
@@ -430,6 +447,24 @@ router.get('/subjects', getSubjects);
 router.post('/broadcast', broadcastMessage);
 
 
+/**
+ * @swagger
+ * /admin/notices:
+ *   get:
+ *     summary: Get all notices
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of notices
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Notice'
+ */
 router.get('/notices', getNotices);
 /**
  * @swagger

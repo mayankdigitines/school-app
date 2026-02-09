@@ -136,7 +136,7 @@ const swaggerOptions = {
             },
             audience: { 
               type: 'string', 
-              enum: ['All', 'Teachers', 'Students', 'Class', 'Student'],
+              enum: ['All', 'Teachers', 'Students', 'Class', 'Student', 'Parents'],
               default: 'All'
             },
             targetClass: { type: 'string', nullable: true },
@@ -160,6 +160,34 @@ const swaggerOptions = {
               rollNumber: { type: 'string', example: '101' },
               status: { type: 'string', enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
               rejectionReason: { type: 'string', nullable: true }
+          }
+        },
+        Subject: {
+          type: 'object',
+          required: ['name', 'school'],
+          properties: {
+             _id: { type: 'string', example: '60d0fe4f5311236168a109d2' },
+            name: { type: 'string', example: 'Mathematics' },
+            school: { type: 'string', example: '60d0fe4f5311236168a109ca' },
+            createdAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        Homework: {
+          type: 'object',
+          required: ['description', 'subject', 'class', 'teacher', 'school', 'dueDate'],
+          properties: {
+            _id: { type: 'string', example: '60d0fe4f5311236168a109d3' },
+            description: { type: 'string', example: 'Solve chapter 5 exercises' },
+            subject: { type: 'string', example: '60d0fe4f5311236168a109d2' },
+            class: { type: 'string', example: '60d0fe4f5311236168a109cc' },
+            teacher: { type: 'string', example: '60d0fe4f5311236168a109cd' },
+            school: { type: 'string', example: '60d0fe4f5311236168a109ca' },
+            dueDate: { type: 'string', format: 'date-time' },
+            attachments: { 
+              type: 'array', 
+              items: { type: 'string' } 
+            },
+            createdAt: { type: 'string', format: 'date-time' }
           }
         }
       }

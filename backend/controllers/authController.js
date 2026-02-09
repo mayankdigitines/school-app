@@ -90,7 +90,7 @@ export const login = async (req, res, next) => {
 export const registerParent = async (req, res, next) => {
   try {
     const { 
-      name, 
+      name,
       phone, 
       password, 
       schoolCode,
