@@ -13,6 +13,7 @@ import {
     addSubject,
     getSubjects,
     broadcastMessage,
+    getStudents,
     getHomeworkActivityLogs,
     assignSubjectTeacher,
     assignSubjectLoad,
@@ -156,6 +157,44 @@ router.post('/assign-subject-teacher', assignSubjectTeacher);
  *         description: Teacher assigned to subject in multiple classes
  */
 router.post('/assign-subject-load', assignSubjectLoad);
+
+
+/**
+ * @swagger
+ * /admin/students:
+ * get:
+ * summary: Get all students with parent and class details
+ * tags: [Admin]
+ * security:
+ * - bearerAuth: []
+ * parameters:
+ * - in: query
+ * name: classId
+ * schema:
+ * type: string
+ * description: Optional - Filter students by Class ID
+ * responses:
+ * 200:
+ * description: List of students retrieved successfully
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * properties:
+ * status:
+ * type: string
+ * example: success
+ * results:
+ * type: integer
+ * data:
+ * type: object
+ * properties:
+ * students:
+ * type: array
+ * items:
+ * $ref: '#/components/schemas/Student'
+ */
+router.get('/students', getStudents); // <--- ADD THIS ROUTE
 
 
 // ...
