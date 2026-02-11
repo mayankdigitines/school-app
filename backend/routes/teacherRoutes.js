@@ -24,6 +24,30 @@ const router = express.Router();
 router.use(protect);
 router.use(restrictTo('Teacher'));
 
+/**
+ * @swagger
+ * /teachers/home:
+ *   get:
+ *     summary: Get teacher dashboard/home data
+ *     tags: [Teacher]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Teacher dashboard data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     teacher:
+ *                       $ref: '#/components/schemas/Teacher'
+ */
 router.get('/home', getTeacherHome);
 
 /**
