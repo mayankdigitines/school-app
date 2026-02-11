@@ -16,11 +16,10 @@ const schoolSchema = new mongoose.Schema({
     email: String,
     phone: String,
     address: String,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+  }
+},
+{
+  timestamps: true,
 });
 
 const School = mongoose.model('School', schoolSchema);

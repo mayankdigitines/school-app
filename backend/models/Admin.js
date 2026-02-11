@@ -28,11 +28,10 @@ const adminSchema = new mongoose.Schema({
     // Required only if role is SchoolAdmin
     required: function() { return this.role === 'SchoolAdmin'; }
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+},{
+  timestamps: true,
+}
+);
 
 // Encrypt password using bcrypt
 adminSchema.pre('save', async function () {

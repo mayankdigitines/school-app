@@ -32,10 +32,8 @@ const studentRequestSchema = new mongoose.Schema({
   rejectionReason: {
     type: String,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+},{
+  timestamps: true,
 });
 
 const StudentRequest = mongoose.model('StudentRequest', studentRequestSchema);

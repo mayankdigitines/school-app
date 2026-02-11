@@ -39,10 +39,9 @@ const noticeSchema = new mongoose.Schema({
   attachments: [{
     type: String, // URL paths to files
   }],
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+},
+{
+  timestamps: true,
 });
 
 const Notice = mongoose.model('Notice', noticeSchema);

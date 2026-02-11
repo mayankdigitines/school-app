@@ -11,10 +11,8 @@ const subjectSchema = new mongoose.Schema({
     ref: 'School',
     required: true,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+},{
+  timestamps: true,
 });
 
 subjectSchema.index({ name: 1, school: 1 }, { unique: true }); // Unique per school

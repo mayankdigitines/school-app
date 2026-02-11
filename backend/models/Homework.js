@@ -32,10 +32,9 @@ const homeworkSchema = new mongoose.Schema({
   attachments: [{
     type: String, // URLs or file paths
   }],
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+},
+{
+  timestamps: true,
 });
 
 homeworkSchema.index({ school: 1, class: 1 });

@@ -24,10 +24,8 @@ const studentSchema = new mongoose.Schema({
     ref: 'Parent',
     required: true,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+},{
+  timestamps: true,
 });
 
 // Ensure roll number is unique within the class

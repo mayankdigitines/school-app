@@ -21,10 +21,9 @@ const parentSchema = new mongoose.Schema({
     ref: 'School',
     required: true,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+},
+{
+  timestamps: true,
 });
 
 parentSchema.pre('save', async function () {
