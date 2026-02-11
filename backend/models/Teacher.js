@@ -32,10 +32,10 @@ const teacherSchema = new mongoose.Schema({
     ref: 'Class',
     default: null,
   },
-  isClassTeacher: {
-    type: Boolean,
-    default: false,
-  },
+  // isClassTeacher: {
+  //   type: Boolean,
+  //   default: false,
+  // },
 },{
   timestamps: true,
 });

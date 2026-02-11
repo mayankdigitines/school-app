@@ -70,10 +70,11 @@ export const createSchool = async (req, res, next) => {
     });
 
     newAdmin.password = undefined;
-
+     const schoolObj = { schoolId: newSchool._id, ...newSchool.toObject() };
+    const adminObj = { adminId: newAdmin._id, ...newAdmin.toObject() };
     res.status(201).json({
       status: 'success',
-      data: { school: newSchool, admin: newAdmin },
+      data: { school:  schoolObj, admin: adminObj },
     });
   } catch (error) {
     next(error);
@@ -83,7 +84,11 @@ export const createSchool = async (req, res, next) => {
 export const getAllSchools = async (req, res, next) => {
   try {
     const schools = await School.find().sort({ createdAt: -1 });
-    res.status(200).json({ status: 'success', results: schools.length, data: { schools } });
+    const formattedSchools = schools.map(school => ({
+      schoolId: school._id,
+      ...school.toObject()
+    }));
+    res.status(200).json({ status: 'success', results: schools.length, data: { schools: formattedSchools } });
   } catch (error) {
     next(error);
   }
@@ -99,7 +104,8 @@ export const getSchoolDetails = async (req, res, next) => {
     if (!schoolId) return next(new AppError('Admin does not belong to a school', 400));
     const school = await School.findById(schoolId);
     if (!school) return next(new AppError('School not found', 404));
-    res.status(200).json({ status: 'success', data: { school } });
+    const schoolObj = { schoolId: school._id, ...school.toObject() };
+    res.status(200).json({ status: 'success', data: { school: schoolObj } });
   } catch (error) {
     next(error);
   }
@@ -112,7 +118,8 @@ export const updateSchoolDetails = async (req, res, next) => {
         const { schoolCode, ...updateData } = req.body; 
         const updatedSchool = await School.findByIdAndUpdate(schoolId, updateData, { new: true, runValidators: true });
         if (!updatedSchool) return next(new AppError('School not found', 404));
-       res.status(200).json({ status: 'success', data: { school: updatedSchool } });
+       const schoolObj = { schoolId: updatedSchool._id, ...updatedSchool.toObject() };
+       res.status(200).json({ status: 'success', data: { school: schoolObj } });
     } catch (error) {
         next(error);
     }
@@ -125,8 +132,8 @@ export const addClass = async (req, res, next) => {
     if (!schoolId) return next(new AppError('Admin does not belong to a school', 400));
 
     const newClass = await Class.create({ grade, section, school: schoolId });
-
-    res.status(201).json({ status: 'success', data: { class: newClass } });
+    const formattedClass = { classId: newClass._id, ...newClass.toObject() };
+    res.status(201).json({ status: 'success', data: { class: formattedClass } });
   } catch (error) {
     if (error.code === 11000) return next(new AppError('Class with this Grade and Section already exists', 400));
     next(error);
@@ -146,7 +153,7 @@ export const createTeacher = async (req, res, next) => {
     // subjects: Array of Subject IDs
     // teachingClasses: Array of Class IDs where this teacher teaches the subjects
     // assignedClassId: Class ID if they are a Class Teacher
-    const { name, password, subjects, isClassTeacher, assignedClassId, teachingClasses } = req.body;
+    const { name, password, subjects, assignedClassId, teachingClasses } = req.body;
     const schoolId = req.user.school;
 
     // 2. Validation
@@ -163,11 +170,10 @@ export const createTeacher = async (req, res, next) => {
       password,
       subjects, // Stores ObjectIds now
       school: schoolId,
-      // assignedClass and isClassTeacher set below
     });
 
     // 4. Handle Class Teacher Logic
-    if (isClassTeacher) {
+    if (assignedClassId) {
         if (!assignedClassId) {
             throw new AppError('Please select a class to assign as Class Teacher.', 400);
         }
@@ -185,7 +191,6 @@ export const createTeacher = async (req, res, next) => {
         classDoc.classTeacher = newTeacher._id;
         await classDoc.save({ session });
 
-        newTeacher.isClassTeacher = true;
         newTeacher.assignedClass = classDoc._id;
     }
 
@@ -262,10 +267,6 @@ export const getTeachers = async (req, res, next) => {
     }
 };
 
-// ... (Rest of the file: updateTeacher, getClasses, assignClassTeacher, etc. remain mostly same but you can keep them for editing features) ...
-// Ensure you keep the existing helper functions and other exports below this point unchanged or updated similarly if needed.
-// For brevity, I am assuming the rest of the file follows the previous structure.
-
 export const updateTeacher = async (req, res, next) => {
     try {
         const { teacherId } = req.params;
@@ -330,7 +331,6 @@ export const assignClassTeacher = async (req, res, next) => {
     await classObj.save();
 
     teacher.assignedClass = classObj._id;
-    teacher.isClassTeacher = true;
     await teacher.save();
 
     res.status(200).json({ status: 'success', message: 'Class Teacher assigned successfully', data: { class: classObj } });

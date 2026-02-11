@@ -4,6 +4,7 @@ import StudentRequest from '../models/StudentRequest.js';
 import Student from '../models/Student.js';
 import Teacher from '../models/Teacher.js';
 import AppError from '../utils/appError.js';
+import Class from '../models/Class.js';
 
 // --- DASHBOARD / HOME ---
 
@@ -12,19 +13,49 @@ export const getTeacherHome = async (req, res, next) => {
     // 1) Fetch Teacher Data with populated fields
     // We explicitly select fields to keep the response lightweight ("optimized")
     const teacher = await Teacher.findById(req.user._id)
-      .populate('school', 'name schoolCode contactInfo') // Populate specific school details
-      .populate('assignedClass', 'name grade section')           // Populate class info if they are a class teacher
-      .populate('subjects', 'name')                              // Populate subjects with just their name
-      .select('-password -__v')                                  // Exclude internal fields
-      .lean();                                                   // Return plain JS object for performance
+      .populate('school', 'name schoolCode contactInfo')
+      .populate('assignedClass', 'grade section')
+      .populate('subjects', 'name')
+      .select('-password -__v')
+      .lean();
 
     if (!teacher) {
         return next(new AppError('Teacher profile not found.', 404));
     }
 
+    // 2) Fetch Classes this teacher teaches
+    const teachingClasses = await Class.find({ 'subjectTeachers.teacher': teacher._id })
+      .select('grade section')
+      .lean();
+    
+    const formattedData = {
+      teacherId: teacher._id,
+      name: teacher.name,
+      username: teacher.username,
+      school: {
+        schoolId: teacher.school._id,
+        schoolName: teacher.school.name,
+        schoolCode: teacher.school.schoolCode,
+        contactInfo: teacher.school.contactInfo
+      },
+      teachingClasses: teachingClasses.map(cls => ({
+        classId: cls._id,
+        grade: cls.grade,
+        section: cls.section
+      })),
+      assignedClass: teacher.assignedClass ? {
+        classId: teacher.assignedClass._id,
+        grade: teacher.assignedClass.grade,
+        section: teacher.assignedClass.section
+      } : null,
+      subjects: teacher.subjects.map(sub => ({ subjectName: sub.name, subjectId: sub._id })),
+      createdAt: teacher.createdAt,
+      updatedAt: teacher.updatedAt
+    }
+
     res.status(200).json({
       status: 'success',
-      data: { teacher }
+      data: { teacher: formattedData }
     });
   } catch (error) {
     next(error);
