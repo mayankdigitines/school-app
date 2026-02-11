@@ -96,6 +96,15 @@ export const login = async (req, res, next) => {
 
     // 5) Generate Token
     const finalRole = user.role || role; 
+
+    if (finalRole === 'Teacher') {
+      const token = signToken(user._id, finalRole);
+      return res.status(200).json({
+        status: 'success',
+        token
+      });
+    }
+
     createSendToken(user, finalRole, 200, res);
 
   } catch (error) {

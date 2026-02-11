@@ -2,7 +2,34 @@ import Notice from '../models/Notice.js';
 import Homework from '../models/Homework.js';
 import StudentRequest from '../models/StudentRequest.js';
 import Student from '../models/Student.js';
+import Teacher from '../models/Teacher.js';
 import AppError from '../utils/appError.js';
+
+// --- DASHBOARD / HOME ---
+
+export const getTeacherHome = async (req, res, next) => {
+  try {
+    // 1) Fetch Teacher Data with populated fields
+    // We explicitly select fields to keep the response lightweight ("optimized")
+    const teacher = await Teacher.findById(req.user._id)
+      .populate('school', 'name schoolCode contactInfo') // Populate specific school details
+      .populate('assignedClass', 'name grade section')           // Populate class info if they are a class teacher
+      .populate('subjects', 'name')                              // Populate subjects with just their name
+      .select('-password -__v')                                  // Exclude internal fields
+      .lean();                                                   // Return plain JS object for performance
+
+    if (!teacher) {
+        return next(new AppError('Teacher profile not found.', 404));
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { teacher }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // --- NOTICE & HOMEWORK ---
 

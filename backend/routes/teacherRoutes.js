@@ -1,5 +1,6 @@
 import express from 'express';
 import { 
+    getTeacherHome,
     getTeacherNotices, 
     postNotice, 
     getPendingRequests, 
@@ -22,6 +23,8 @@ const router = express.Router();
 
 router.use(protect);
 router.use(restrictTo('Teacher'));
+
+router.get('/home', getTeacherHome);
 
 /**
  * @swagger
