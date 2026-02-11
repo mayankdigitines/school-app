@@ -1,33 +1,37 @@
-import { useEffect, useState } from 'react';
-import api from '../../services/api';
+import { useState } from 'react';
+import { useSchools } from '../../hooks/useSchools';
 import CreateSchoolDialog from '../../components/superadmin/CreateSchoolDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Building, MapPin, Phone, Mail, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Building, MapPin, Phone, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { toast } from 'sonner';
 
-const ManageSchools = () => {
-  const [schools, setSchools] = useState([]);
-  const [loading, setLoading] = useState(true);
+const ITEMS_PER_PAGE = 5;
 
-  const fetchSchools = async () => {
-    try {
-      const response = await api.get('/admin/schools');
-      if (response.data.status === 'success') {
-        setSchools(response.data.data.schools);
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to fetch schools');
-    } finally {
-      setLoading(false);
-    }
+const ManageSchools = () => {
+  const { schools, isLoading, isError, error } = useSchools();
+  const [currentPage, setCurrentPage] = useState(1);
+
+  if (isError) {
+    console.error(error);
+    toast.error('Failed to fetch schools');
+  }
+
+  // Pagination Logic
+  const totalPages = Math.ceil(schools.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedSchools = schools.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
   };
 
-  useEffect(() => {
-    fetchSchools();
-  }, []);
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+  };
 
   return (
     <div className="space-y-6">
@@ -36,7 +40,7 @@ const ManageSchools = () => {
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Manage Schools</h1>
             <p className="text-slate-500 dark:text-slate-400">View and create schools in the system.</p>
         </div>
-        <CreateSchoolDialog onSchoolCreated={fetchSchools} />
+        <CreateSchoolDialog />
       </div>
 
       <Card>
@@ -47,15 +51,14 @@ const ManageSchools = () => {
             </CardDescription>
         </CardHeader>
         <CardContent>
-            {loading ? (
-                <div className="flex justify-center items-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
-                </div>
+            {isLoading ? (
+                <TableSkeleton columns={5} rows={5} />
             ) : schools.length === 0 ? (
                 <div className="text-center py-8 text-slate-500">
                     No schools found. Create one to get started.
                 </div>
             ) : (
+                <>
                 <div className="rounded-md border">
                     <Table>
                         <TableHeader>
@@ -68,7 +71,7 @@ const ManageSchools = () => {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {schools.map((school) => (
+                            {paginatedSchools.map((school) => (
                                 <TableRow key={school._id}>
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
@@ -107,6 +110,33 @@ const ManageSchools = () => {
                         </TableBody>
                     </Table>
                 </div>
+                {/* Pagination Controls */}
+                {schools.length > ITEMS_PER_PAGE && (
+                    <div className="flex items-center justify-end space-x-2 py-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePrevPage}
+                            disabled={currentPage === 1}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            Previous
+                        </Button>
+                        <div className="text-sm text-slate-600">
+                            Page {currentPage} of {totalPages}
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleNextPage}
+                            disabled={currentPage === totalPages}
+                        >
+                            Next
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+                </>
             )}
         </CardContent>
       </Card>

@@ -37,9 +37,19 @@ router.use(restrictTo('Teacher'));
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Notice'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 results:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     notices:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Notice'
  */
 router.get('/notices', getTeacherNotices);
 
@@ -100,9 +110,19 @@ router.post('/notices', upload.array('attachments', 5), validateNotice, postNoti
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/StudentRequest'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 results:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     requests:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/StudentRequest'
  */
 router.get('/requests', getPendingRequests);
 
@@ -151,9 +171,19 @@ router.post('/requests/handle', handleStudentRequest);
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Student'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 results:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     students:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Student'
  */
 router.get('/students', getClassStudents);
 

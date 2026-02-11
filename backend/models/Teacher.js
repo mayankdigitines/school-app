@@ -1,3 +1,4 @@
+
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -11,27 +12,21 @@ const teacherSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  email: {
-    type: String,
-    unique: true,
-    sparse: true, // Allows multiple null values
-    lowercase: true,
-  },
+  
   password: {
     type: String,
     required: true,
     select: false,
-  },
-  phone: {
-    type: String,
   },
   school: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'School',
     required: true,
   },
+  // CHANGED: Linked to Subject model instead of plain String for integrity
   subjects: [{
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject'
   }],
   assignedClass: {
     type: mongoose.Schema.Types.ObjectId,
@@ -48,7 +43,6 @@ const teacherSchema = new mongoose.Schema({
   },
 });
 
-// FIXED: Removed 'next' parameter. Mongoose handles async functions automatically.
 teacherSchema.pre('save', async function () {
   if (!this.isModified('password')) {
     return;

@@ -28,9 +28,19 @@ router.use(restrictTo('Parent'));
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Student'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 results:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     students:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Student'
  */
 router.get('/children', getMyChildren);
 
@@ -48,9 +58,19 @@ router.get('/children', getMyChildren);
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Notice'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 results:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     notices:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Notice'
  */
 router.get('/dashboard', getDashboardNotices);
 

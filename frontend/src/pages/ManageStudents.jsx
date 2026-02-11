@@ -135,41 +135,38 @@ const ManageStudents = () => {
                 </TableRow>
               ) : (
                 students.map((student) => (
-                  <TableRow key={student._id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                    <TableCell className="font-medium font-mono text-primary">
-                        #{student.rollNumber}
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
-                                {student.name.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="font-medium">{student.name}</span>
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                      {student.studentClass ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium">
-                            Grade {student.studentClass.grade}-{student.studentClass.section}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">Unassigned</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                            <User size={14} className="text-muted-foreground" />
-                            {student.parent?.name || "N/A"}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                            <Phone size={14} className="text-muted-foreground" />
-                            {student.parent?.phone || "N/A"}
-                        </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+  <TableRow key={student._id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+    <TableCell className="font-medium font-mono text-primary">
+        #{student.rollNumber}
+    </TableCell>
+    <TableCell>
+        <div className="flex items-center gap-2">
+            <span className="font-medium">{student.name}</span>
+        </div>
+    </TableCell>
+    <TableCell>
+      {student.studentClass ? (
+        <span className="inline-flex items-center px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium">
+            Grade {student.studentClass.grade}-{student.studentClass.section}
+        </span>
+      ) : (
+        <span className="text-muted-foreground text-xs">Unassigned</span>
+      )}
+    </TableCell>
+    <TableCell>
+        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <User size={14} className="text-muted-foreground" />
+            {student.parent?.name || "N/A"}
+        </div>
+    </TableCell>
+    <TableCell>
+        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <Phone size={14} className="text-muted-foreground" />
+            {student.parent?.phone || "N/A"}
+        </div>
+    </TableCell>
+  </TableRow>
+  ))
               )}
             </TableBody>
           </Table>

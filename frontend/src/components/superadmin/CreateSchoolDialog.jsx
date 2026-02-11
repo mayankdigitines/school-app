@@ -12,12 +12,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Loader2 } from 'lucide-react';
-import api from '../../services/api';
+import { useSchools } from '../../hooks/useSchools';
 import { toast } from 'sonner';
 
-const CreateSchoolDialog = ({ onSchoolCreated }) => {
+const CreateSchoolDialog = () => {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { createSchool, isCreating } = useSchools();
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -35,28 +36,23 @@ const CreateSchoolDialog = ({ onSchoolCreated }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
-      const response = await api.post('/admin/create-school', formData);
+      const response = await createSchool(formData);
       
-      if (response.data.status === 'success') {
-        toast.success(`School "${response.data.data.school.name}" created successfully!`);
-        toast.info(`Generated School Code: ${response.data.data.school.schoolCode}`);
+      if (response.status === 'success') {
+        toast.success(`School "${response.data.school.name}" created successfully!`);
+        toast.info(`Generated School Code: ${response.data.school.schoolCode}`);
         
         setOpen(false);
         setFormData({
             name: '', email: '', phone: '', address: '',
             adminName: '', adminEmail: '', adminPassword: ''
         });
-        
-        if (onSchoolCreated) onSchoolCreated();
       }
     } catch (error) {
       console.error(error);
       toast.error(error.response?.data?.message || 'Failed to create school');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -123,8 +119,8 @@ const CreateSchoolDialog = ({ onSchoolCreated }) => {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</> : 'Create School'}
+            <Button type="submit" disabled={isCreating}>
+              {isCreating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</> : 'Create School'}
             </Button>
           </DialogFooter>
         </form>

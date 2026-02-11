@@ -1,8 +1,37 @@
+// import path from 'path';
+// import { fileURLToPath } from 'url';
+
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
+
+// const swaggerOptions = {
+//   definition: {
+//     openapi: '3.0.0',
+//     info: {
+//       title: 'School Application',
+//       version: '1.0.0',
+//       description: 'API documentation for School App Backend',
+//     },
+//     servers: [
+//       {
+//         url: 'http://localhost:5000/api/v1',
+//         description: 'Local server'
+//       },
+//       {
+//         url: 'https://school-app-backend-new.onrender.com/api/v1',
+//         description: 'Production server'
+//       }
+//     ],
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Determine the server URL based on the environment
+const serverUrl = process.env.NODE_ENV === 'production' 
+  ? 'https://school-app-backend-new.onrender.com/api/v1' 
+  : 'http://localhost:5000/api/v1';
 
 const swaggerOptions = {
   definition: {
@@ -13,6 +42,11 @@ const swaggerOptions = {
       description: 'API documentation for School App Backend',
     },
     servers: [
+      {
+        url: serverUrl,
+        description: 'Default Server'
+      },
+      // You can keep these as backups if you want, but the dynamic one above is usually enough
       {
         url: 'http://localhost:5000/api/v1',
         description: 'Local server'
@@ -80,12 +114,11 @@ const swaggerOptions = {
         },
         Teacher: {
           type: 'object',
-          required: ['name', 'email', 'password', 'school'],
+          required: ['name', 'username', 'password', 'school'],
           properties: {
             _id: { type: 'string', example: '60d0fe4f5311236168a109cd' },
             name: { type: 'string', example: 'John Doe' },
-            email: { type: 'string', format: 'email', example: 'teacher@school.com' },
-            phone: { type: 'string', example: '1234567890' },
+            username: { type: 'string', example: 'john1234' },
             school: { type: 'string', example: '60d0fe4f5311236168a109ca' },
             subjects: { 
               type: 'array', 

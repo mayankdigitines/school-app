@@ -89,6 +89,39 @@ router.use(protect);
  */
 // SuperAdmin Routes
 router.post('/create-school', restrictTo('SuperAdmin'), createSchool);
+
+/**
+ * @swagger
+ * /admin/schools:
+ *   get:
+ *     summary: Get all schools (SuperAdmin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of schools found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 results:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     schools:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/School'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (Not SuperAdmin)
+ */
 router.get('/schools', restrictTo('SuperAdmin'), getAllSchools);
 
 // SchoolAdmin Routes
@@ -162,39 +195,39 @@ router.post('/assign-subject-load', assignSubjectLoad);
 /**
  * @swagger
  * /admin/students:
- * get:
- * summary: Get all students with parent and class details
- * tags: [Admin]
- * security:
- * - bearerAuth: []
- * parameters:
- * - in: query
- * name: classId
- * schema:
- * type: string
- * description: Optional - Filter students by Class ID
- * responses:
- * 200:
- * description: List of students retrieved successfully
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * status:
- * type: string
- * example: success
- * results:
- * type: integer
- * data:
- * type: object
- * properties:
- * students:
- * type: array
- * items:
- * $ref: '#/components/schemas/Student'
+ *   get:
+ *     summary: Get all students with parent and class details
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: classId
+ *         schema:
+ *           type: string
+ *         description: Optional - Filter students by Class ID
+ *     responses:
+ *       200:
+ *         description: List of students retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 results:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     students:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Student'
  */
-router.get('/students', getStudents); // <--- ADD THIS ROUTE
+router.get('/students', getStudents);
 
 
 // ...
@@ -289,9 +322,19 @@ router.post('/add-class', addClass);
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Class'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 results:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     classes:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Class'
  */
 router.get('/classes', getClasses);
 
@@ -311,21 +354,29 @@ router.get('/classes', getClasses);
  *             type: object
  *             required:
  *               - name
- *               - email
  *               - password
+ *               - subjects
  *             properties:
  *               name:
  *                 type: string
- *               email:
- *                 type: string
  *               password:
- *                 type: string
- *               phone:
  *                 type: string
  *               subjects:
  *                 type: array
  *                 items:
  *                   type: string
+ *                 description: Array of Subject IDs
+ *               isClassTeacher:
+ *                 type: boolean
+ *                 default: false
+ *               assignedClassId:
+ *                 type: string
+ *                 description: Required if isClassTeacher is true
+ *               teachingClasses:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of Class IDs where this teacher teaches the subjects
  *     responses:
  *       201:
  *         description: Teacher created successfully
@@ -346,9 +397,19 @@ router.post('/add-teacher', createTeacher);
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Teacher'
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 results:
+ *                   type: integer
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     teachers:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Teacher'
  */
 router.get('/teachers', getTeachers);
 
@@ -403,12 +464,15 @@ router.patch('/assign-class-teacher', assignClassTeacher);
  *             properties:
  *               name:
  *                 type: string
- *               email:
+ *               password:
  *                 type: string
  *               subjects:
  *                 type: array
  *                 items:
  *                   type: string
+ *               classId:
+ *                 type: string
+ *                 description: ID of class to assign as Class Teacher
  *     responses:
  *       200:
  *         description: Teacher updated successfully

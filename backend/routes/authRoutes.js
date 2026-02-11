@@ -28,7 +28,7 @@ import { validateRegistration, validateLogin } from '../middleware/validators.js
  *             properties:
  *               username:
  *                 type: string
- *                 description: Email for Admin/Teacher, Phone for Parent
+ *                 description: Email for Admin, Username for Teacher, Phone for Parent
  *                 example: "superadmin@gmail.com"
  *               password:
  *                 type: string
@@ -37,6 +37,10 @@ import { validateRegistration, validateLogin } from '../middleware/validators.js
  *                 type: string
  *                 enum: [SuperAdmin, SchoolAdmin, Teacher, Parent]
  *                 example: "SuperAdmin"
+ *               schoolCode:
+ *                 type: string
+ *                 description: Required if role is Teacher
+ *                 example: "SCH123"
  *     responses:
  *       200:
  *         description: Login successful
