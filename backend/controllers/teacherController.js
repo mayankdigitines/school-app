@@ -73,11 +73,29 @@ export const getTeacherNotices = async (req, res, next) => {
         { audience: 'Teachers' }
       ]
     }).sort('-createdAt');
+    // id with their name instead of just id for postedBy and also optmize for like notice id,schoool id with name and postedBy with name and role instead of just id to avoid multiple calls from frontend to get those details
+     const formattedNotices = notices.map(notice => ({
+        noticeId: notice._id,
+        title: notice.title,
+        content: notice.content,
+        audience: notice.audience,
+        attachments: notice.attachments,
+        postedBy: {
+          userId: notice.postedBy.userId,
+          name: notice.postedBy.name,
+          role: notice.postedBy.role
+        },
+        school: {
+          schoolId: notice.school._id,
+          name: notice.school.name
+        },
+        createdAt: notice.createdAt
+    }));
 
     res.status(200).json({
       status: 'success',
       results: notices.length,
-      data: { notices }
+      data: { notices: formattedNotices }
     });
   } catch (error) {
     next(error);
@@ -138,10 +156,29 @@ export const getPendingRequests = async (req, res, next) => {
       status: 'Pending'
     }).populate('parent', 'name phone');
 
+    const formattedData = requests.map(req => ({
+      requestId: req._id,
+      studentName: req.studentName,
+      rollNumber: req.rollNumber,
+      requestedClass: {
+        classId: req.requestedClass._id,
+        name: req.requestedClass.name
+      },
+      parent: {
+        parentId: req.parent._id,
+        name: req.parent.name,
+        phone: req.parent.phone
+      },
+      status: req.status,
+      rejectionReason: req.rejectionReason,
+      createdAt: req.createdAt,
+      updatedAt: req.updatedAt
+    }));
+
     res.status(200).json({
       status: 'success',
       results: requests.length,
-      data: { requests }
+      data: { requests: formattedData }
     });
   } catch (error) {
     next(error);
@@ -209,6 +246,20 @@ export const handleStudentRequest = async (req, res, next) => {
 export const getClassStudents = async (req, res, next) => {
     try {
         // Defaults to assigned class, or allows querying specific class if needed
+        // allow all the teacher to see students
+        // i Want that subject teachers can also see the students of the classes they teach, not just the class teacher. So if a teacher teaches Math to Class 5A, they should be able to see all students in Class 5A, even if they are not the assigned class teacher for 5A. This is important for them to manage their subject-specific homework and notices effectively.
+        
+        const isClassTeacher = req.user.assignedClass && req.user.assignedClass.toString() === req.query.classId;
+        const isSubjectTeacher = await Class.findOne({ 
+            _id: req.query.classId, 
+            'subjectTeachers.teacher': req.user._id 
+        });
+        
+        if (!isClassTeacher && !isSubjectTeacher) {
+            return next(new AppError('You are not authorized to view students for this class', 403));
+        }
+
+
         const classId = req.query.classId || req.user.assignedClass;
 
         if(!classId) {
@@ -216,16 +267,37 @@ export const getClassStudents = async (req, res, next) => {
         }
 
         const students = await Student.find({ studentClass: classId }).populate('parent', 'name phone');
-
+    const formattedStudents = students.map(student => ({
+    studentId: student._id,
+    name: student.name,
+    rollNumber: student.rollNumber,
+    parent: {
+        parentId: student.parent._id,
+        name: student.parent.name,
+        phone: student.parent.phone
+    },
+    school: {
+        schoolId: student.school._id,
+        name: student.school.name
+    },
+    studentClass: {
+        classId: student.studentClass._id,
+        name: student.studentClass.name
+    },
+    createdAt: student.createdAt,
+    updatedAt: student.updatedAt
+}));
         res.status(200).json({
             status: 'success',
             results: students.length,
-            data: { students }
+            data: { students: formattedStudents }
         });
     } catch (error) {
         next(error);
     }
 };
+
+
 
 export const createHomework = async (req, res, next) => {
   try {
