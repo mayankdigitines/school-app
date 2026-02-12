@@ -11,7 +11,6 @@ import Class from '../models/Class.js';
 export const getTeacherHome = async (req, res, next) => {
   try {
     // 1) Fetch Teacher Data with populated fields
-    // We explicitly select fields to keep the response lightweight ("optimized")
     const teacher = await Teacher.findById(req.user._id)
       .populate('school', 'name schoolCode contactInfo')
       .populate('assignedClass', 'grade section')
@@ -23,7 +22,7 @@ export const getTeacherHome = async (req, res, next) => {
         return next(new AppError('Teacher profile not found.', 404));
     }
 
-    // 2) Fetch Classes this teacher teaches
+    // 2) Fetch Classes this teacher teaches as a Subject Teacher
     const teachingClasses = await Class.find({ 'subjectTeachers.teacher': teacher._id })
       .select('grade section')
       .lean();
@@ -38,11 +37,13 @@ export const getTeacherHome = async (req, res, next) => {
         schoolCode: teacher.school.schoolCode,
         contactInfo: teacher.school.contactInfo
       },
+      // Classes where they are a Subject Teacher
       teachingClasses: teachingClasses.map(cls => ({
         classId: cls._id,
         grade: cls.grade,
         section: cls.section
       })),
+      // Class where they are the Class Teacher (if any)
       assignedClass: teacher.assignedClass ? {
         classId: teacher.assignedClass._id,
         grade: teacher.assignedClass.grade,
@@ -72,22 +73,23 @@ export const getTeacherNotices = async (req, res, next) => {
         { audience: 'All' },
         { audience: 'Teachers' }
       ]
-    }).sort('-createdAt');
-    // id with their name instead of just id for postedBy and also optmize for like notice id,schoool id with name and postedBy with name and role instead of just id to avoid multiple calls from frontend to get those details
-     const formattedNotices = notices.map(notice => ({
+    })
+    .sort('-createdAt')
+    .lean();
+
+    const formattedNotices = notices.map(notice => ({
         noticeId: notice._id,
         title: notice.title,
         content: notice.content,
         audience: notice.audience,
         attachments: notice.attachments,
         postedBy: {
-          userId: notice.postedBy.userId,
-          name: notice.postedBy.name,
-          role: notice.postedBy.role
+          userId: notice.postedBy?.userId,
+          name: notice.postedBy?.name,
+          role: notice.postedBy?.role
         },
         school: {
-          schoolId: notice.school._id,
-          name: notice.school.name
+          schoolId: notice.school,
         },
         createdAt: notice.createdAt
     }));
@@ -107,14 +109,25 @@ export const postNotice = async (req, res, next) => {
     const { title, content, audience, targetClassId, targetStudentId } = req.body;
     let attachments = [];
     
-    // Convert req.files to array of paths if using multer
     if (req.files) {
         attachments = req.files.map(file => file.path);
     }
     
-    // Validation: If teacher tries to post to a class they aren't assigned to? 
-    // Business logic: Can a teacher post to ANY class? Usually yes for "Substitute" reasons, 
-    // but often restricted. Let's assume open for intra-school flexibility for now.
+    // Security: Validate if teacher has access to the target class
+    if (audience === 'Class' && targetClassId) {
+        // Check if Class Teacher
+        const isClassTeacher = req.user.assignedClass && req.user.assignedClass.toString() === targetClassId;
+        
+        // Check if Subject Teacher
+        const isSubjectTeacher = await Class.exists({ 
+            _id: targetClassId, 
+            'subjectTeachers.teacher': req.user._id 
+        });
+
+        if (!isClassTeacher && !isSubjectTeacher) {
+            return next(new AppError('You are not authorized to post notices to this class.', 403));
+        }
+    }
 
     const newNotice = await Notice.create({
       title,
@@ -145,7 +158,7 @@ export const postNotice = async (req, res, next) => {
 
 export const getPendingRequests = async (req, res, next) => {
   try {
-    // A teacher should only see requests for THEIR assigned class
+    // Only Class Teachers can manage requests for their class
     if (!req.user.assignedClass) {
         return next(new AppError('You are not assigned as a Class Teacher to any class.', 403));
     }
@@ -154,20 +167,24 @@ export const getPendingRequests = async (req, res, next) => {
       school: req.user.school,
       requestedClass: req.user.assignedClass,
       status: 'Pending'
-    }).populate('parent', 'name phone');
+    })
+    .populate('parent', 'name phone')
+    .populate('requestedClass', 'grade section')
+    .lean();
 
     const formattedData = requests.map(req => ({
       requestId: req._id,
       studentName: req.studentName,
       rollNumber: req.rollNumber,
       requestedClass: {
-        classId: req.requestedClass._id,
-        name: req.requestedClass.name
+        classId: req.requestedClass?._id,
+        grade: req.requestedClass?.grade,
+        section: req.requestedClass?.section
       },
       parent: {
-        parentId: req.parent._id,
-        name: req.parent.name,
-        phone: req.parent.phone
+        parentId: req.parent?._id,
+        name: req.parent?.name,
+        phone: req.parent?.phone
       },
       status: req.status,
       rejectionReason: req.rejectionReason,
@@ -187,7 +204,7 @@ export const getPendingRequests = async (req, res, next) => {
 
 export const handleStudentRequest = async (req, res, next) => {
   try {
-    const { requestId, status, rejectionReason } = req.body; // status: 'Approved' or 'Rejected'
+    const { requestId, status, rejectionReason } = req.body; 
     
     if (!['Approved', 'Rejected'].includes(status)) {
         return next(new AppError('Invalid status. Must be Approved or Rejected', 400));
@@ -198,8 +215,8 @@ export const handleStudentRequest = async (req, res, next) => {
         return next(new AppError('Request not found', 404));
     }
 
-    // Security check: Is this teacher the class teacher for this request?
-    if (request.requestedClass.toString() !== req.user.assignedClass.toString()) {
+    // Security check: Only the Class Teacher of the requested class can approve
+    if (!req.user.assignedClass || request.requestedClass.toString() !== req.user.assignedClass.toString()) {
          return next(new AppError('You are not authorized to manage requests for this class', 403));
     }
 
@@ -215,7 +232,6 @@ export const handleStudentRequest = async (req, res, next) => {
     }
 
     // APPROVAL LOGIC
-    // 1. Create Student
     const newStudent = await Student.create({
         name: request.studentName,
         rollNumber: request.rollNumber,
@@ -224,7 +240,6 @@ export const handleStudentRequest = async (req, res, next) => {
         parent: request.parent
     });
 
-    // 2. Update Request Status
     request.status = 'Approved';
     await request.save();
 
@@ -235,7 +250,6 @@ export const handleStudentRequest = async (req, res, next) => {
     });
 
   } catch (error) {
-    // Handle Roll No Duplicate
     if (error.code === 11000) {
          return next(new AppError('Roll Number already exists in this class', 400));
     }
@@ -245,48 +259,65 @@ export const handleStudentRequest = async (req, res, next) => {
 
 export const getClassStudents = async (req, res, next) => {
     try {
-        // Defaults to assigned class, or allows querying specific class if needed
-        // allow all the teacher to see students
-        // i Want that subject teachers can also see the students of the classes they teach, not just the class teacher. So if a teacher teaches Math to Class 5A, they should be able to see all students in Class 5A, even if they are not the assigned class teacher for 5A. This is important for them to manage their subject-specific homework and notices effectively.
+        const { classId } = req.query;
+        const teacherId = req.user._id;
+
+        // 1. Find ALL classes where this teacher has authorization
+        // (Either as Class Teacher OR Subject Teacher)
+        const authorizedClasses = await Class.find({
+            $or: [
+                { classTeacher: teacherId },
+                { 'subjectTeachers.teacher': teacherId }
+            ]
+        }).select('_id grade section').lean();
+
+        // Extract IDs for easy comparison
+        const authorizedClassIds = authorizedClasses.map(c => c._id.toString());
         
-        const isClassTeacher = req.user.assignedClass && req.user.assignedClass.toString() === req.query.classId;
-        const isSubjectTeacher = await Class.findOne({ 
-            _id: req.query.classId, 
-            'subjectTeachers.teacher': req.user._id 
-        });
-        
-        if (!isClassTeacher && !isSubjectTeacher) {
-            return next(new AppError('You are not authorized to view students for this class', 403));
+        let targetClassIds = [];
+
+        if (classId) {
+            // Case A: User requests a specific class
+            if (!authorizedClassIds.includes(classId)) {
+                return next(new AppError('You are not authorized to view students for this class', 403));
+            }
+            targetClassIds = [classId];
+        } else {
+            // Case B: No specific class requested -> Return students from ALL authorized classes
+            // This handles the "Subject Teacher" case who teaches multiple classes
+            if (authorizedClassIds.length === 0) {
+                 return next(new AppError('You are not assigned to any classes.', 404));
+            }
+            targetClassIds = authorizedClassIds;
         }
 
+        // 2. Fetch Students
+        const students = await Student.find({ studentClass: { $in: targetClassIds } })
+            .populate('parent', 'name phone')
+            .populate('studentClass', 'grade section') // Populate to show which class the student belongs to
+            .lean();
 
-        const classId = req.query.classId || req.user.assignedClass;
+        const formattedStudents = students.map(student => ({
+            studentId: student._id,
+            name: student.name,
+            rollNumber: student.rollNumber,
+            parent: {
+                parentId: student.parent?._id,
+                name: student.parent?.name,
+                phone: student.parent?.phone
+            },
+            school: {
+                schoolId: student.school
+            },
+            class: {
+                classId: student.studentClass?._id,
+                grade: student.studentClass?.grade,
+                section: student.studentClass?.section
+            },
+            createdAt: student.createdAt,
+            updatedAt: student.updatedAt
+        }));
 
-        if(!classId) {
-             return next(new AppError('No class specified or assigned', 400));
-        }
-
-        const students = await Student.find({ studentClass: classId }).populate('parent', 'name phone');
-    const formattedStudents = students.map(student => ({
-    studentId: student._id,
-    name: student.name,
-    rollNumber: student.rollNumber,
-    parent: {
-        parentId: student.parent._id,
-        name: student.parent.name,
-        phone: student.parent.phone
-    },
-    school: {
-        schoolId: student.school._id,
-        name: student.school.name
-    },
-    studentClass: {
-        classId: student.studentClass._id,
-        name: student.studentClass.name
-    },
-    createdAt: student.createdAt,
-    updatedAt: student.updatedAt
-}));
         res.status(200).json({
             status: 'success',
             results: students.length,
@@ -297,13 +328,10 @@ export const getClassStudents = async (req, res, next) => {
     }
 };
 
-
-
 export const createHomework = async (req, res, next) => {
   try {
     const { description, subjectId, classId, dueDate } = req.body;
     
-    // Convert req.files to array of paths if using multer
     let attachments = [];
     if (req.files) {
         attachments = req.files.map(file => file.path);
