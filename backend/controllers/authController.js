@@ -34,15 +34,22 @@ const createSendToken = async (user, role, statusCode, res) => {
   user.password = undefined;
   user.refreshToken = undefined;
 
-  res.status(statusCode).json({
+  // Prepare response object
+  const response = {
     status: 'success',
     accessToken,   // Use this for Bearer Auth
     refreshToken,  // Store this securely (SecureStore/HttpOnly Cookie)
-    data: {
+  };
+
+  // Only include data if the role is NOT 'Teacher'
+  if (role !== 'Teacher') {
+    response.data = {
       user,
       role
-    },
-  });
+    };
+  }
+
+  res.status(statusCode).json(response);
 };
 
 // --- LOGIN CONTROLLER ---

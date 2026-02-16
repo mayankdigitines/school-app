@@ -5,6 +5,7 @@ import Student from '../models/Student.js';
 import Teacher from '../models/Teacher.js';
 import AppError from '../utils/appError.js';
 import Class from '../models/Class.js';
+import Attendance from '../models/Attendance.js';
 
 // --- DASHBOARD / HOME ---
 
@@ -351,6 +352,127 @@ export const createHomework = async (req, res, next) => {
       status: 'success',
       data: { homework: newHomework }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+// all teacher get classes in school
+
+export const getTeacherClasses = async (req, res, next) => {
+  try {
+    const classes = await Class.find({ school: req.user.school })
+      .select('grade section')
+      .lean();
+    const formattedClasses = classes.map(cls => ({
+      classId: cls._id,
+      grade: cls.grade,
+      section: cls.section
+    }));
+    res.status(200).json({
+      status: 'success',
+      results: classes.length,
+      data: { classes: formattedClasses }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// --- ATTENDANCE MANAGEMENT ---
+
+export const markAttendance = async (req, res, next) => {
+  try {
+    const { date, absentStudentIds } = req.body;
+    
+    // 1. Validation: Ensure Teacher is a Class Teacher
+    if (!req.user.assignedClass) {
+      return next(new AppError('You are not assigned as a Class Teacher.', 403));
+    }
+    
+    // 2. Normalize Date (Strip time to avoid timezone duplicates)
+    // Create date object from string and set to midnight UTC or local equivalent for consistency
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(0, 0, 0, 0);
+
+    // 3. Fetch ALL students in this class
+    const allStudents = await Student.find({ 
+      studentClass: req.user.assignedClass 
+    }).select('_id name rollNumber');
+
+    if (allStudents.length === 0) {
+      return next(new AppError('No students found in your class to mark attendance.', 404));
+    }
+
+    // 4. Build the Records Array
+    // Loop through ALL students. If their ID is in the 'absentStudentIds' list, mark Absent.
+    const attendanceRecords = allStudents.map(student => {
+      const isAbsent = absentStudentIds.includes(student._id.toString());
+      return {
+        student: student._id,
+        status: isAbsent ? 'Absent' : 'Present'
+      };
+    });
+
+    // 5. Database Operation: Upsert (Update if exists, Insert if new)
+    const attendance = await Attendance.findOneAndUpdate(
+      { 
+        class: req.user.assignedClass, 
+        date: attendanceDate 
+      },
+      {
+        $set: {
+          school: req.user.school,
+          takenBy: req.user._id,
+          records: attendanceRecords
+        }
+      },
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Attendance marked successfully',
+      data: { 
+        date: attendance.date,
+        presentCount: attendance.records.filter(r => r.status === 'Present').length,
+        absentCount: attendance.records.filter(r => r.status === 'Absent').length
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAttendanceHistory = async (req, res, next) => {
+  try {
+    const { date } = req.query;
+
+    if (!req.user.assignedClass) {
+      return next(new AppError('You are not a Class Teacher.', 403));
+    }
+
+    let query = { class: req.user.assignedClass };
+
+    // If date provided, fetch specific day. Else fetch recent 30 days.
+    if (date) {
+      const queryDate = new Date(date);
+      queryDate.setHours(0, 0, 0, 0);
+      query.date = queryDate;
+    }
+
+    const history = await Attendance.find(query)
+      .sort({ date: -1 })
+      .limit(30)
+      .populate('records.student', 'name rollNumber');
+
+    res.status(200).json({
+      status: 'success',
+      results: history.length,
+      data: { history }
+    });
+
   } catch (error) {
     next(error);
   }

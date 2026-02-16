@@ -6,7 +6,10 @@ import {
     getPendingRequests, 
     handleStudentRequest,
     getClassStudents,
-    createHomework
+    createHomework,
+    getTeacherClasses,
+    markAttendance,
+    getAttendanceHistory
 } from '../controllers/teacherController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 import upload from '../utils/fileUpload.js';
@@ -255,3 +258,148 @@ router.get('/students', getClassStudents);
 router.post('/homework', upload.array('attachments', 5), createHomework);
 
 export default router;
+
+
+
+/**
+ * @swagger
+ * /teachers/classes:
+ *   get:
+ *     summary: Get all classes assigned to the teacher
+ *     tags: [Teacher]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of classes assigned to the teacher
+ */
+
+router.get('/classes', getTeacherClasses);
+
+// ...existing code...
+
+/**
+ * @swagger
+ * /teachers/attendance:
+ *   post:
+ *     summary: Mark attendance for the assigned class (Class Teacher only)
+ *     tags: [Teacher]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - date
+ *               - absentStudentIds
+ *             properties:
+ *               date:
+ *                 type: string
+ *                 format: date
+ *                 description: Date for attendance (YYYY-MM-DD)
+ *               absentStudentIds:
+ *                 type: array
+ *                 description: Array of student IDs who are absent
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Attendance marked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     date:
+ *                       type: string
+ *                       format: date
+ *                     presentCount:
+ *                       type: integer
+ *                     absentCount:
+ *                       type: integer
+ *       400:
+ *         description: Bad request or validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+
+
+router.post('/attendance', markAttendance);
+
+
+
+
+/**
+ * @swagger
+ * /teachers/attendance:
+ *   get:
+ *     summary: Get attendance history for the assigned class (Class Teacher only)
+ *     tags: [Teacher]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         required: false
+ *         description: Filter attendance by date (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: Attendance history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     attendance:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           date:
+ *                             type: string
+ *                             format: date
+ *                           records:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 studentId:
+ *                                   type: string
+ *                                 name:
+ *                                   type: string
+ *                                 rollNumber:
+ *                                   type: string
+ *                                 status:
+ *                                   type: string
+ *                                   enum: [Present, Absent]
+ *       400:
+ *         description: Bad request or validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+
+
+router.get('/attendance', getAttendanceHistory);
+

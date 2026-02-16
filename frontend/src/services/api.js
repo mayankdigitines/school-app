@@ -9,9 +9,11 @@ const api = axios.create({
   },
 });
 
+// Request Interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // FIX: Retrieve the correct key 'accessToken'
+    const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -22,11 +24,16 @@ api.interceptors.request.use(
   }
 );
 
+// Response Interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+      // Optional: Add logic here to try refreshing token using 'refreshToken' 
+      // before logging out if you implement the refresh flow fully.
+      
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
