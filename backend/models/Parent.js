@@ -21,6 +21,10 @@ const parentSchema = new mongoose.Schema({
     ref: 'School',
     required: true,
   },
+  refreshToken: {
+    type: String,
+    select: false
+  }
 },
 {
   timestamps: true,

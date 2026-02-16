@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { promisify } from 'util';
 import Admin from '../models/Admin.js';
 import Teacher from '../models/Teacher.js';
 import Parent from '../models/Parent.js';
@@ -7,19 +8,36 @@ import School from '../models/School.js';
 import StudentRequest from '../models/StudentRequest.js';
 import Class from '../models/Class.js';
 
-const signToken = (id, role) => {
+// --- Token Generators ---
+const signAccessToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
+    expiresIn: '15m', // Short-lived Access Token
   });
 };
 
-const createSendToken = (user, role, statusCode, res) => {
-  const token = signToken(user._id, role);
+const signRefreshToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
+    expiresIn: '7d', // Long-lived Refresh Token
+  });
+};
+
+const createSendToken = async (user, role, statusCode, res) => {
+  const accessToken = signAccessToken(user._id, role);
+  const refreshToken = signRefreshToken(user._id, role);
+
+  // Store Refresh Token in DB
+  user.refreshToken = refreshToken;
+  // Use validateBeforeSave: false to avoid running all validation logic (like required fields) if just updating token
+  await user.save({ validateBeforeSave: false });
+
+  // Hide sensitive data
   user.password = undefined;
+  user.refreshToken = undefined;
 
   res.status(statusCode).json({
     status: 'success',
-    token,
+    accessToken,   // Use this for Bearer Auth
+    refreshToken,  // Store this securely (SecureStore/HttpOnly Cookie)
     data: {
       user,
       role
@@ -27,10 +45,7 @@ const createSendToken = (user, role, statusCode, res) => {
   });
 };
 
-
-
-// --- LOGIN & REGISTRATION CONTROLLERS ---
-
+// --- LOGIN CONTROLLER ---
 export const login = async (req, res, next) => {
   try {
     let { username, password, role, schoolCode } = req.body;
@@ -51,28 +66,21 @@ export const login = async (req, res, next) => {
       user = await Admin.findOne({ email: cleanEmail }).select('+password').populate('school');
     } 
     else if (role === 'Teacher') {
-      // --- PRODUCTION TEACHER LOGIN FLOW ---
-      
       // A. Require School Code
       if (!schoolCode) {
         return next(new AppError('School Code is required for Teacher login.', 400));
       }
-
-      // B. Optimize: Find School first (Lightweight query)
+      // B. Find School
       const school = await School.findOne({ schoolCode }).select('_id name');
-      
       if (!school) {
         return next(new AppError('Invalid School Code.', 404));
       }
-
       // C. Find Teacher Scoped to School
-      // This strictly matches the username AND the verified school ID.
       user = await Teacher.findOne({ 
         username: username, 
         school: school._id 
       }).select('+password').populate('school');
 
-      // Security: If user not found in this specific school, deny access
       if (!user) {
         return next(new AppError('Invalid credentials or you do not belong to this school.', 401));
       }
@@ -94,26 +102,95 @@ export const login = async (req, res, next) => {
          return next(new AppError('Account configuration error: No school linked.', 500));
     }
 
-    // 5) Generate Token
+    // 5) Generate & Send Tokens
     const finalRole = user.role || role; 
-
-    if (finalRole === 'Teacher') {
-      const token = signToken(user._id, finalRole);
-      return res.status(200).json({
-        status: 'success',
-        token
-      });
-    }
-
-    createSendToken(user, finalRole, 200, res);
+    await createSendToken(user, finalRole, 200, res);
 
   } catch (error) {
     next(error);
   }
 };
 
+// --- REFRESH TOKEN CONTROLLER ---
+export const refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
 
-// Parent Registration is a public auth route
+    if (!refreshToken) {
+      return next(new AppError('Refresh Token is required', 400));
+    }
+
+    // 1) Verify Token
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return next(new AppError('Invalid or expired refresh token', 403));
+    }
+
+    // 2) Check if user exists & find user
+    let user;
+    if (decoded.role === 'SuperAdmin' || decoded.role === 'SchoolAdmin') {
+      user = await Admin.findById(decoded.id).select('+refreshToken');
+    } else if (decoded.role === 'Teacher') {
+      user = await Teacher.findById(decoded.id).select('+refreshToken');
+    } else if (decoded.role === 'Parent') {
+      user = await Parent.findById(decoded.id).select('+refreshToken');
+    }
+
+    if (!user) {
+      return next(new AppError('User not found', 404));
+    }
+
+    // 3) Check if Refresh Token matches DB (Security: Detect Reuse)
+    if (user.refreshToken !== refreshToken) {
+      // Possible token theft! Invalidate current token.
+      user.refreshToken = undefined;
+      await user.save({ validateBeforeSave: false });
+      return next(new AppError('Invalid refresh token. Please login again.', 403));
+    }
+
+    // 4) Token Rotation: Issue NEW pair
+    const newAccessToken = signAccessToken(user._id, decoded.role);
+    const newRefreshToken = signRefreshToken(user._id, decoded.role);
+
+    // 5) Update DB with new Refresh Token
+    user.refreshToken = newRefreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+      status: 'success',
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+// --- LOGOUT CONTROLLER ---
+export const logout = async (req, res, next) => {
+  try {
+    // Requires 'protect' middleware before this to get req.user
+    const user = req.user;
+
+    // Clear refresh token from DB
+    // We need to fetch the user document if req.user doesn't have save() method depending on middleware,
+    // but typically protect attaches the Mongoose document.
+    user.refreshToken = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// --- PARENT REGISTRATION ---
 export const registerParent = async (req, res, next) => {
   try {
     const { 
@@ -156,13 +233,6 @@ export const registerParent = async (req, res, next) => {
             password,
             school: school._id
         });
-    } else {
-         // Optional: Verify password if reusing account? 
-         // For simplicity, we assume if phone matches, we just link the new request.
-         // In production, we should probably force login -> add child. 
-         // But prompt implies a registration flow. Let's assume new parent for now, or handle duplicate error if unique constraint hits.
-         // The unique constraint is on phone. So create will fail if it exists.
-         // Let's just catch the error if it fails distinct from logic.
     }
 
     // 4) Create Student Request

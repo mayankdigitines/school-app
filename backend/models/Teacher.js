@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -22,7 +21,6 @@ const teacherSchema = new mongoose.Schema({
     ref: 'School',
     required: true,
   },
-  // CHANGED: Linked to Subject model instead of plain String for integrity
   subjects: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Subject'
@@ -32,10 +30,10 @@ const teacherSchema = new mongoose.Schema({
     ref: 'Class',
     default: null,
   },
-  // isClassTeacher: {
-  //   type: Boolean,
-  //   default: false,
-  // },
+  refreshToken: {
+    type: String,
+    select: false
+  }
 },{
   timestamps: true,
 });

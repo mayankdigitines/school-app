@@ -28,6 +28,10 @@ const adminSchema = new mongoose.Schema({
     // Required only if role is SchoolAdmin
     required: function() { return this.role === 'SchoolAdmin'; }
   },
+  refreshToken: {
+    type: String,
+    select: false
+  }
 },{
   timestamps: true,
 }
