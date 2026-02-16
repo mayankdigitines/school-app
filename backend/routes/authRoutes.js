@@ -6,63 +6,64 @@ import { protect } from '../middleware/authMiddleware.js';
 /**
  * @swagger
  * tags:
- * name: Auth
- * description: Authentication management
+ *   - name: Auth
+ *     description: Authentication management
  */
 
 /**
  * @swagger
  * /auth/login:
- * post:
- * summary: User Login
- * tags: [Auth]
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * type: object
- * required:
- * - username
- * - password
- * - role
- * properties:
- * username:
- * type: string
- * password:
- * type: string
- * role:
- * type: string
- * schoolCode:
- * type: string
- * responses:
- * 200:
- * description: Login successful
+ *   post:
+ *     summary: User Login
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *               - role
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *               schoolCode:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
  */
-// fix the error in swagger doc to remove duplicate required fields and add schoolCode as optional
+
 /**
  * @swagger
  * /auth/refresh-token:
- * post:
- * summary: Refresh Access Token
- * tags: [Auth]
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * type: object
- * required:
- * - refreshToken
- * properties:
- * refreshToken:
- * type: string
- * responses:
- * 200:
- * description: New Access and Refresh Tokens
- * 403:
- * description: Invalid Token
+ *   post:
+ *     summary: Refresh Access Token
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: New Access and Refresh Tokens
+ *       403:
+ *         description: Invalid Token
  */
+
 const router = express.Router();
 
 router.post('/login', validateLogin, login);
