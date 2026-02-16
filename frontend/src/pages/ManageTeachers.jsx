@@ -41,7 +41,7 @@ const SearchableList = ({ items, selectedIds, onItemToggle, label, icon: Icon, e
   const [search, setSearch] = useState('');
 
   const filteredItems = items.filter(item => 
-    (item.name || `Grade ${item.grade} - ${item.section}`).toLowerCase().includes(search.toLowerCase())
+    (item.name || `${item.className}`).toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -75,7 +75,7 @@ const SearchableList = ({ items, selectedIds, onItemToggle, label, icon: Icon, e
              <div className="text-center py-4 text-xs text-muted-foreground">{emptyMsg || "No items found."}</div>
           ) : (
             filteredItems.map(item => {
-              const labelText = item.name || `Grade ${item.grade} - ${item.section}`;
+              const labelText = item.name || `${item.className}`;
               const isSelected = selectedIds.includes(item._id);
               return (
                 <div 
@@ -154,7 +154,7 @@ const ManageTeachers = () => {
   };
 
   // --- Helpers ---
-  const formatClass = (cls) => cls ? `Grade ${cls.grade} - ${cls.section}` : '';
+  const formatClass = (cls) => cls ? `${cls.className}` : '';
 
   const getTeachingClassesForTeacher = (teacherId) => {
     return classes.filter(cls => 

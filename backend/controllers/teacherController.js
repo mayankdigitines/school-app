@@ -14,7 +14,7 @@ export const getTeacherHome = async (req, res, next) => {
     // 1) Fetch Teacher Data with populated fields
     const teacher = await Teacher.findById(req.user._id)
       .populate('school', 'name schoolCode contactInfo')
-      .populate('assignedClass', 'grade section')
+      .populate('assignedClass', 'className')
       .populate('subjects', 'name')
       .select('-password -__v')
       .lean();
@@ -25,7 +25,7 @@ export const getTeacherHome = async (req, res, next) => {
 
     // 2) Fetch Classes this teacher teaches as a Subject Teacher
     const teachingClasses = await Class.find({ 'subjectTeachers.teacher': teacher._id })
-      .select('grade section')
+      .select('className')
       .lean();
     
     const formattedData = {
@@ -41,14 +41,12 @@ export const getTeacherHome = async (req, res, next) => {
       // Classes where they are a Subject Teacher
       teachingClasses: teachingClasses.map(cls => ({
         classId: cls._id,
-        grade: cls.grade,
-        section: cls.section
+        className: cls.className
       })),
       // Class where they are the Class Teacher (if any)
       assignedClass: teacher.assignedClass ? {
         classId: teacher.assignedClass._id,
-        grade: teacher.assignedClass.grade,
-        section: teacher.assignedClass.section
+        className: teacher.assignedClass.className
       } : null,
       subjects: teacher.subjects.map(sub => ({ subjectName: sub.name, subjectId: sub._id })),
       createdAt: teacher.createdAt,
