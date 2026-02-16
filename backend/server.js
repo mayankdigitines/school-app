@@ -3,7 +3,11 @@ dotenv.config({ quiet: true });
 import connectDB from './config/db.js';
 import app from './app.js'; // Import app after config
 
+
+
 const PORT = process.env.PORT || 5000;
+
+
 
 // Create an async function to start the server safely
 const startServer = async () => {

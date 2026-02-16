@@ -127,15 +127,15 @@ export const updateSchoolDetails = async (req, res, next) => {
 
 export const addClass = async (req, res, next) => {
   try {
-    const { grade, section } = req.body;
+    const { className } = req.body;
     const schoolId = req.user.school;
     if (!schoolId) return next(new AppError('Admin does not belong to a school', 400));
 
-    const newClass = await Class.create({ grade, section, school: schoolId });
+    const newClass = await Class.create({ className, school: schoolId });
     const formattedClass = { classId: newClass._id, ...newClass.toObject() };
     res.status(201).json({ status: 'success', data: { class: formattedClass } });
   } catch (error) {
-    if (error.code === 11000) return next(new AppError('Class with this Grade and Section already exists', 400));
+    if (error.code === 11000) return next(new AppError('Class with this className already exists', 400));
     next(error);
   }
 };
@@ -254,7 +254,7 @@ export const createTeacher = async (req, res, next) => {
 export const getTeachers = async (req, res, next) => {
     try {
         const teachers = await Teacher.find({ school: req.user.school })
-            .populate('assignedClass', 'grade section')
+            .populate('assignedClass', 'className') // Populate class name for Class Teachers
             .populate('subjects', 'name'); // Populate subject names
         
         res.status(200).json({
@@ -320,7 +320,7 @@ export const assignClassTeacher = async (req, res, next) => {
     if (!classObj) return next(new AppError('Class not found', 404));
 
     if (classObj.classTeacher && classObj.classTeacher.toString() !== teacherId) {
-        return next(new AppError(`Class ${classObj.grade}-${classObj.section} already has a Class Teacher assigned.`, 409));
+        return next(new AppError(`Class ${classObj.className} already has a Class Teacher assigned.`, 409));
     }
 
     if (teacher.assignedClass && teacher.assignedClass.toString() !== classId) {
@@ -434,7 +434,7 @@ export const getHomeworkActivityLogs = async (req, res, next) => {
         const homeworks = await Homework.find(filter)
             .populate('teacher', 'name email')
             .populate('subject', 'name')
-            .populate('class', 'grade section')
+            .populate('class', 'className')
             .sort({ createdAt: -1 });
         res.status(200).json({ status: 'success', results: homeworks.length, data: { homeworks } });
     } catch (error) {
@@ -459,7 +459,7 @@ export const getStudents = async (req, res, next) => {
     if (classId) queryObj.studentClass = classId;
 
     const students = await Student.find(queryObj)
-      .populate({ path: 'studentClass', select: 'grade section' })
+      .populate({ path: 'studentClass', select: 'className' })
       .populate({ path: 'parent', select: 'name phone' })
       .sort({ 'studentClass': 1, 'rollNumber': 1 });
 

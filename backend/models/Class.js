@@ -1,14 +1,11 @@
 import mongoose from 'mongoose';
 
 const classSchema = new mongoose.Schema({
-  grade: {
+ className: {
     type: String, 
     required: true,
-  },
-  section: {
-    type: String, 
-    required: true,
-    uppercase: true,
+    trim: true,
+    uppercase: true
   },
   school: {
     type: mongoose.Schema.Types.ObjectId,
@@ -40,7 +37,7 @@ const classSchema = new mongoose.Schema({
 }
 );
 
-classSchema.index({ school: 1, grade: 1, section: 1 }, { unique: true });
+classSchema.index({ school: 1, className: 1 }, { unique: true });
 
 const Class = mongoose.model('Class', classSchema);
 export default Class;
