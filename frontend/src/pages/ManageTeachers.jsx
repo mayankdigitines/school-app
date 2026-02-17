@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import api from '../services/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,17 +32,18 @@ import {
 import { toast } from 'sonner';
 import { 
   Plus, Loader2, Crown, BookOpen, KeyRound, Copy, Users, 
-  Search, Eye, MoreHorizontal, CheckCircle2, XCircle, UserCog 
+  Search, Eye, UserCog 
 } from 'lucide-react';
 
 // --- Internal Component: Searchable Selection List ---
-// Handles long lists of subjects/classes gracefully
-const SearchableList = ({ items, selectedIds, onItemToggle, label, icon: Icon, emptyMsg }) => {
+const SearchableList = ({ items, selectedIds, onToggle, label, icon: Icon, emptyMsg }) => {
   const [search, setSearch] = useState('');
 
-  const filteredItems = items.filter(item => 
-    (item.name || `${item.className}`).toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredItems = useMemo(() => {
+    return items.filter(item => 
+      (item.name || item.className || '').toLowerCase().includes(search.toLowerCase())
+    );
+  }, [items, search]);
 
   return (
     <div className="space-y-3">
@@ -55,7 +56,7 @@ const SearchableList = ({ items, selectedIds, onItemToggle, label, icon: Icon, e
         </Label>
       </div>
       
-      <div className="border rounded-md bg-slate-50 dark:bg-slate-900/50 overflow-hidden">
+      <div className="border rounded-md bg-slate-50 dark:bg-slate-900/50 overflow-hidden flex flex-col">
         {/* Search Header */}
         <div className="p-2 border-b bg-white dark:bg-black/20 sticky top-0 z-10">
           <div className="relative">
@@ -75,24 +76,29 @@ const SearchableList = ({ items, selectedIds, onItemToggle, label, icon: Icon, e
              <div className="text-center py-4 text-xs text-muted-foreground">{emptyMsg || "No items found."}</div>
           ) : (
             filteredItems.map(item => {
-              const labelText = item.name || `${item.className}`;
+              const labelText = item.name || item.className;
               const isSelected = selectedIds.includes(item._id);
               return (
-                <div 
-                  key={item._id} 
-                  className={`flex items-center space-x-2 p-1.5 rounded-md transition-colors cursor-pointer group ${isSelected ? 'bg-primary/10' : 'hover:bg-slate-200 dark:hover:bg-slate-800'}`}
-                  onClick={() => onItemToggle(item._id, !isSelected)}
+                <button
+                  key={item._id}
+                  type="button"
+                  onClick={() => onToggle(item._id)}
+                  className={`w-full flex items-center space-x-2 p-2 rounded-md transition-colors cursor-pointer select-none text-left ${
+                    isSelected 
+                      ? 'bg-primary/10 border border-primary/20' 
+                      : 'border border-transparent hover:bg-slate-200 dark:hover:bg-slate-800'
+                  }`}
                 >
-                  <Checkbox 
-                    id={`item-${item._id}`}
-                    checked={isSelected}
-                    onCheckedChange={(checked) => onItemToggle(item._id, checked)}
-                    className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                  />
-                  <Label htmlFor={`item-${item._id}`} className="text-sm font-normal cursor-pointer flex-1 truncate select-none">
+                  {/* Inert Checkbox - purely visual */}
+                  <div className="pointer-events-none">
+                    <Checkbox checked={isSelected} />
+                  </div>
+                  
+                  {/* Text Label */}
+                  <span className={`text-sm font-normal flex-1 truncate ${isSelected ? 'font-medium text-primary' : ''}`}>
                     {labelText}
-                  </Label>
-                </div>
+                  </span>
+                </button>
               )
             })
           )}
@@ -115,17 +121,17 @@ const ManageTeachers = () => {
   const [viewTeacher, setViewTeacher] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Search Filter for Main Table
+  // Search Filter
   const [tableSearch, setTableSearch] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
     name: '',
     password: '',
-    subjects: [],
+    subjects: [], // Array of IDs
     isClassTeacher: false,
     assignedClassId: '',
-    teachingClasses: []
+    teachingClasses: [] // Array of IDs
   });
 
   // --- Init ---
@@ -153,16 +159,32 @@ const ManageTeachers = () => {
     }
   };
 
-  // --- Helpers ---
-  const formatClass = (cls) => cls ? `${cls.className}` : '';
+  // --- CRITICAL FIX: Prevent Duplicate Classes in Map ---
+  const teacherClassMap = useMemo(() => {
+    const map = {};
+    
+    classes.forEach(cls => {
+      // 1. Identify all UNIQUE teachers for this specific class
+      // (Using a Set prevents a teacher from being counted 3 times if they teach 3 subjects)
+      const uniqueTeachersInClass = new Set();
+      
+      cls.subjectTeachers?.forEach(st => {
+        const tId = typeof st.teacher === 'object' ? st.teacher._id : st.teacher;
+        if (tId) uniqueTeachersInClass.add(tId);
+      });
 
-  const getTeachingClassesForTeacher = (teacherId) => {
-    return classes.filter(cls => 
-      cls.subjectTeachers?.some(st => 
-        (st.teacher?._id === teacherId) || (st.teacher === teacherId)
-      )
-    );
-  };
+      // 2. Map this class to those unique teachers
+      uniqueTeachersInClass.forEach(tId => {
+        if (!map[tId]) map[tId] = [];
+        map[tId].push(cls);
+      });
+    });
+
+    return map;
+  }, [classes]);
+
+  // --- Helpers ---
+  const formatClass = (cls) => cls ? cls.className : '';
 
   const filteredTeachers = useMemo(() => {
     return teachers.filter(t => 
@@ -189,55 +211,41 @@ const ManageTeachers = () => {
   };
 
   const handleOpenView = (teacher) => {
-    const teachingCls = getTeachingClassesForTeacher(teacher._id);
+    const teachingCls = teacherClassMap[teacher._id] || [];
     setViewTeacher({ ...teacher, teachingClassesDetails: teachingCls });
     setIsViewOpen(true);
   };
 
-  // Prevent duplicate selection for subjects and teachingClasses
-  const handleListToggle = (field, id, isChecked) => {
+  const handleListToggle = (field, id) => {
     setFormData(prev => {
-      let currentList = prev[field];
-      if (isChecked) {
-        // Add only if not already present
-        if (!currentList.includes(id)) {
-          // For subjects, ensure no duplicates
-          if (field === 'subjects') {
-            return { ...prev, [field]: [...currentList, id] };
-          }
-          // For teachingClasses, ensure no duplicates
-          if (field === 'teachingClasses') {
-            return { ...prev, [field]: [...currentList, id] };
-          }
-        }
-        // If already present, do nothing
-        return prev;
-      }
-      // Remove item
-      return { ...prev, [field]: currentList.filter(item => item !== id) };
+      const list = prev[field] || [];
+      const exists = list.includes(id);
+      
+      const newList = exists 
+        ? list.filter(item => item !== id) 
+        : [...list, id];
+
+      return { ...prev, [field]: newList };
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
+    
     if (!formData.name.trim() || !formData.password) {
         toast.error('Name and Password are required');
-        setIsSubmitting(false);
         return;
     }
     if (formData.subjects.length === 0) {
         toast.warning('Select at least one subject');
-        setIsSubmitting(false);
         return;
     }
     if (formData.isClassTeacher && !formData.assignedClassId) {
         toast.error('Select a class for Class Teacher role');
-        setIsSubmitting(false);
         return;
     }
 
+    setIsSubmitting(true);
     try {
       await api.post('/admin/add-teacher', formData);
       toast.success('Teacher added successfully');
@@ -257,7 +265,7 @@ const ManageTeachers = () => {
 
   return (
     <div className="space-y-6">
-      {/* --- Top Stats & Header --- */}
+      {/* --- Header --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Staff Management</h2>
@@ -346,12 +354,11 @@ const ManageTeachers = () => {
                 </TableRow>
               ) : (
                 filteredTeachers.map((teacher) => {
-                  const teachingCount = getTeachingClassesForTeacher(teacher._id).length;
+                  const teachingCount = teacherClassMap[teacher._id]?.length || 0;
                   const subjectCount = teacher.subjects?.length || 0;
                   
                   return (
                     <TableRow key={teacher._id} className="group">
-                      {/* 1. Profile Column */}
                       <TableCell>
                         <div className="flex flex-col gap-1">
                           <span className="font-semibold text-slate-900 dark:text-slate-100">{teacher.name}</span>
@@ -367,10 +374,8 @@ const ManageTeachers = () => {
                         </div>
                       </TableCell>
 
-                      {/* 2. Assignments Summary Column (Clean UI) */}
                       <TableCell>
                         <div className="flex flex-col gap-1.5">
-                           {/* Subjects Summary */}
                            <div className="flex items-center gap-2 text-sm">
                               <BookOpen size={14} className="text-blue-500" />
                               {subjectCount === 0 ? (
@@ -386,7 +391,6 @@ const ManageTeachers = () => {
                               )}
                            </div>
                            
-                           {/* Classes Summary */}
                            <div className="flex items-center gap-2 text-sm">
                               <Users size={14} className="text-green-500" />
                               {teachingCount === 0 ? (
@@ -400,7 +404,6 @@ const ManageTeachers = () => {
                         </div>
                       </TableCell>
 
-                      {/* 3. Role Column */}
                       <TableCell>
                           {teacher.assignedClass ? (
                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 gap-1.5 py-1">
@@ -412,7 +415,6 @@ const ManageTeachers = () => {
                           )}
                       </TableCell>
 
-                      {/* 4. Actions */}
                       <TableCell className="text-right">
                          <Button variant="ghost" size="sm" onClick={() => handleOpenView(teacher)} className="h-8 gap-1 text-muted-foreground hover:text-primary">
                             <Eye size={16} /> View Profile
@@ -427,7 +429,7 @@ const ManageTeachers = () => {
         </CardContent>
       </Card>
 
-      {/* --- ADD TEACHER MODAL (Improved Layout) --- */}
+      {/* --- ADD TEACHER MODAL --- */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
             <DialogHeader className="p-6 pb-2">
@@ -440,7 +442,6 @@ const ManageTeachers = () => {
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-6">
-               {/* Section 1: Credentials */}
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                       <Label>Full Name <span className="text-red-500">*</span></Label>
@@ -463,14 +464,13 @@ const ManageTeachers = () => {
 
                <div className="h-px bg-border" />
 
-               {/* Section 2: Workload (Searchable Lists) */}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <SearchableList 
                      label="Subjects to Teach"
                      icon={BookOpen}
                      items={subjects}
                      selectedIds={formData.subjects}
-                     onItemToggle={(id, checked) => handleListToggle('subjects', id, checked)}
+                     onToggle={(id) => handleListToggle('subjects', id)}
                      emptyMsg="No subjects found. Create subjects first."
                   />
                   
@@ -479,14 +479,13 @@ const ManageTeachers = () => {
                      icon={Users}
                      items={classes}
                      selectedIds={formData.teachingClasses}
-                     onItemToggle={(id, checked) => handleListToggle('teachingClasses', id, checked)}
+                     onToggle={(id) => handleListToggle('teachingClasses', id)}
                      emptyMsg="No classes found."
                   />
                </div>
 
                <div className="h-px bg-border" />
 
-               {/* Section 3: Administrative Role */}
                <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-lg border border-amber-100 dark:border-amber-900/50 space-y-3">
                   <div className="flex items-center justify-between">
                      <div className="flex items-center gap-2">
@@ -540,7 +539,7 @@ const ManageTeachers = () => {
         </DialogContent>
       </Dialog>
 
-      {/* --- VIEW PROFILE MODAL (Detailed Read-Only View) --- */}
+      {/* --- VIEW PROFILE MODAL --- */}
       {viewTeacher && (
         <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
           <DialogContent className="sm:max-w-[600px]">
@@ -559,7 +558,6 @@ const ManageTeachers = () => {
              </DialogHeader>
 
              <div className="space-y-6">
-                {/* Role Badge */}
                 <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-md border">
                    <span className="text-sm font-medium">Administrative Role</span>
                    {viewTeacher.assignedClass ? (
@@ -571,7 +569,6 @@ const ManageTeachers = () => {
                    )}
                 </div>
 
-                {/* Subjects Grid */}
                 <div>
                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                       <BookOpen size={16} className="text-blue-500" /> Teaching Subjects
@@ -589,7 +586,6 @@ const ManageTeachers = () => {
                    </div>
                 </div>
 
-                {/* Classes Grid */}
                 <div>
                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                       <Users size={16} className="text-green-500" /> Teaching In Classes

@@ -275,56 +275,117 @@ export const handleStudentRequest = async (req, res, next) => {
   }
 };
 
+
+
+// export const getClassStudents = async (req, res, next) => {
+//   try {
+//     const { classId } = req.query;
+//     const teacherId = req.user._id;
+
+//     let targetClassIds = [];
+
+//     // CASE 1: Specific Class Requested
+//     if (classId) {
+//       // Check if the teacher has ANY authority (Class Teacher OR Subject Teacher) over this specific class
+//       const isAuthorized = await Class.exists({
+//         _id: classId,
+//         $or: [
+//           { classTeacher: teacherId },              // Role 1: Class Teacher
+//           { 'subjectTeachers.teacher': teacherId }  // Role 2: Subject Teacher
+//         ]
+//       });
+
+//       if (!isAuthorized) {
+//         return next(new AppError('You are not authorized to view students for this class.', 403));
+//       }
+
+//       targetClassIds = [classId];
+//     } 
+    
+//     // CASE 2: No Specific Class (Fetch All Authorized Classes)
+//     else {
+//       const authorizedClasses = await Class.find({
+//         $or: [
+//           { classTeacher: teacherId },
+//           { 'subjectTeachers.teacher': teacherId }
+//         ]
+//       }).select('_id').lean();
+
+//       if (!authorizedClasses.length) {
+//         // Return empty list instead of error for better UI handling
+//         return res.status(200).json({
+//           status: 'success',
+//           results: 0,
+//           data: { students: [] }
+//         });
+//       }
+
+//       targetClassIds = authorizedClasses.map(c => c._id);
+//     }
+
+//     // Fetch Students belonging to the target class(es)
+//     const students = await Student.find({ studentClass: { $in: targetClassIds } })
+//       .populate('parent', 'name phone')
+//       .populate('studentClass', 'className')
+//       .sort({ 'studentClass': 1, 'rollNumber': 1 }) // Group by class, then order by roll number
+//       .lean();
+
+//     // Format data for the frontend
+//     const formattedStudents = students.map(student => ({
+//       studentId: student._id,
+//       name: student.name,
+//       rollNumber: student.rollNumber,
+//       className: student.studentClass?.className || 'Unassigned',
+//       classId: student.studentClass?._id,
+//       parent: {
+//         name: student.parent?.name || 'N/A',
+//         phone: student.parent?.phone || 'N/A'
+//       }
+//     }));
+
+//     res.status(200).json({
+//       status: 'success',
+//       results: students.length,
+//       data: { students: formattedStudents }
+//     });
+
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
+
 export const getClassStudents = async (req, res, next) => {
     try {
         const { classId } = req.query;
-        const teacherId = req.user._id;
-        let targetClassIds = [];
 
-        // OPTIMIZATION: If a specific class is requested, check permission for ONLY that class
+        // 1. Base Query: Fetch students belonging to the teacher's school
+        // This grants access to ALL students in the school, fulfilling your new requirement.
+        const query = { school: req.user.school };
+
+        // 2. Optional Filter: If classId is provided, filter by that class.
+        // We do NOT restrict this to only "assigned" classes anymore.
         if (classId) {
-            const isAuthorized = await Class.exists({
-                _id: classId,
-                $or: [
-                    { classTeacher: teacherId }, // Is Class Teacher
-                    { 'subjectTeachers.teacher': teacherId } // Is Subject Teacher
-                ]
-            });
-
-            if (!isAuthorized) {
-                return next(new AppError('You are not authorized to view students for this class', 403));
-            }
-            targetClassIds = [classId];
-        } else {
-            // If no specific class requested, fetch ALL authorized classes
-            const authorizedClasses = await Class.find({
-                $or: [
-                    { classTeacher: teacherId },
-                    { 'subjectTeachers.teacher': teacherId }
-                ]
-            }).select('_id');
-
-            if (authorizedClasses.length === 0) {
-                 return next(new AppError('You are not assigned to any classes.', 404));
-            }
-            targetClassIds = authorizedClasses.map(c => c._id);
+            query.studentClass = classId;
         }
 
-        // 2. Fetch Students
-        const students = await Student.find({ studentClass: { $in: targetClassIds } })
+        // 3. Fetch Data
+        const students = await Student.find(query)
             .populate('parent', 'name phone')
             .populate('studentClass', 'className') 
-            .sort({ 'studentClass': 1, 'rollNumber': 1 }) // Sorted for better UI
+            .sort({ 'studentClass': 1, 'rollNumber': 1 }) // Sort by Class name, then Roll Number
             .lean();
 
+        // 4. Format Data
         const formattedStudents = students.map(student => ({
             studentId: student._id,
             name: student.name,
             rollNumber: student.rollNumber,
             parent: {
                 parentId: student.parent?._id,
-                name: student.parent?.name,
-                phone: student.parent?.phone
+                name: student.parent?.name || 'N/A',
+                phone: student.parent?.phone || 'N/A'
             },
             school: {
                 schoolId: student.school,
@@ -346,6 +407,8 @@ export const getClassStudents = async (req, res, next) => {
         next(error);
     }
 };
+
+
 
 export const createHomework = async (req, res, next) => {
   try {

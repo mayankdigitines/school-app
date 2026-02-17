@@ -79,7 +79,7 @@ const ManageClasses = () => {
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus size={16} /> Add Class</Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-106.25">
             <DialogHeader>
               <DialogTitle>Add New Class</DialogTitle>
               <DialogDescription>Create a new class (e.g., "10 A", "Grade 5").</DialogDescription>
@@ -111,7 +111,7 @@ const ManageClasses = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">#</TableHead>
+                <TableHead className="w-25">#</TableHead>
                 <TableHead>Class Name</TableHead>
                 {/* Removed separate Grade/Section headers */}
               </TableRow>
