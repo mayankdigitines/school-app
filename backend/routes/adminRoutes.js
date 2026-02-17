@@ -278,34 +278,7 @@ router.get('/students', getStudents);
 router.get('/school', getSchoolDetails);
 router.patch('/school', updateSchoolDetails);
 
-/**
- * @swagger
- * /admin/add-class:
- *   post:
- *     summary: Add a new Class (SchoolAdmin only)
- *     tags: [Admin]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - grade
- *               - section
- *             properties:
- *               grade:
- *                 type: string
- *               section:
- *                 type: string
- *     responses:
- *       201:
- *         description: Class added successfully
- *       400:
- *         description: Invalid input
- */
+
 router.post('/add-class', addClass);
 
 /**
