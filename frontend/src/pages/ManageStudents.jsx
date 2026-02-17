@@ -88,7 +88,7 @@ const ManageStudents = () => {
               <SelectItem value="all">All Classes</SelectItem>
               {classes.map((cls) => (
                 <SelectItem key={cls._id} value={cls._id}>
-                  Grade {cls.grade} - {cls.section}
+                 Class {cls.className}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -147,7 +147,7 @@ const ManageStudents = () => {
     <TableCell>
       {student.studentClass ? (
         <span className="inline-flex items-center px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium">
-            Grade {student.studentClass.grade}-{student.studentClass.section}
+            Class {student.studentClass.className}
         </span>
       ) : (
         <span className="text-muted-foreground text-xs">Unassigned</span>

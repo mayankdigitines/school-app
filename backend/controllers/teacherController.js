@@ -168,7 +168,7 @@ export const getPendingRequests = async (req, res, next) => {
       status: 'Pending'
     })
     .populate('parent', 'name phone')
-    .populate('requestedClass', 'grade section')
+    .populate('requestedClass', 'className') // Populate to show class name in request details
     .lean();
 
     const formattedData = requests.map(req => ({
@@ -177,8 +177,7 @@ export const getPendingRequests = async (req, res, next) => {
       rollNumber: req.rollNumber,
       requestedClass: {
         classId: req.requestedClass?._id,
-        grade: req.requestedClass?.grade,
-        section: req.requestedClass?.section
+        className: req.requestedClass?.className
       },
       parent: {
         parentId: req.parent?._id,
@@ -231,21 +230,32 @@ export const handleStudentRequest = async (req, res, next) => {
     }
 
     // APPROVAL LOGIC
-    const newStudent = await Student.create({
+    // const newStudent = await Student.create({
+    //     name: request.studentName,
+    //     rollNumber: request.rollNumber,
+    //     school: request.school,
+    //     studentClass: request.requestedClass,
+    //     parent: request.parent
+    // });
+
+
+    const fromatstudent = {
         name: request.studentName,
         rollNumber: request.rollNumber,
+        className: request.requestedClass.className,
+        parentId: request.parent.parentId,
+        parentName: request.parent.name,
+        parentPhone: request.parent.phone,
         school: request.school,
-        studentClass: request.requestedClass,
-        parent: request.parent
-    });
-
+        schoolName: req.user.school.schoolName
+    };
     request.status = 'Approved';
     await request.save();
 
     res.status(200).json({
         status: 'success',
         message: 'Student approved and enrolled successfully',
-        data: { student: newStudent }
+        data: { student: fromatstudent }
     });
 
   } catch (error) {
@@ -268,7 +278,7 @@ export const getClassStudents = async (req, res, next) => {
                 { classTeacher: teacherId },
                 { 'subjectTeachers.teacher': teacherId }
             ]
-        }).select('_id grade section').lean();
+        }).select('className').lean();
 
         // Extract IDs for easy comparison
         const authorizedClassIds = authorizedClasses.map(c => c._id.toString());
@@ -293,7 +303,7 @@ export const getClassStudents = async (req, res, next) => {
         // 2. Fetch Students
         const students = await Student.find({ studentClass: { $in: targetClassIds } })
             .populate('parent', 'name phone')
-            .populate('studentClass', 'grade section') // Populate to show which class the student belongs to
+            .populate('studentClass', 'className') // Populate to show which class the student belongs to
             .lean();
 
         const formattedStudents = students.map(student => ({
@@ -306,12 +316,12 @@ export const getClassStudents = async (req, res, next) => {
                 phone: student.parent?.phone
             },
             school: {
-                schoolId: student.school
+                schoolId: student.school,
+                schoolName: req.user.school.schoolName
             },
             class: {
                 classId: student.studentClass?._id,
-                grade: student.studentClass?.grade,
-                section: student.studentClass?.section
+                className: student.studentClass?.className || 'Unassigned',
             },
             createdAt: student.createdAt,
             updatedAt: student.updatedAt
@@ -359,12 +369,11 @@ export const createHomework = async (req, res, next) => {
 export const getTeacherClasses = async (req, res, next) => {
   try {
     const classes = await Class.find({ school: req.user.school })
-      .select('grade section')
+      .select('className')
       .lean();
     const formattedClasses = classes.map(cls => ({
       classId: cls._id,
-      grade: cls.grade,
-      section: cls.section
+      className: cls.className
     }));
     res.status(200).json({
       status: 'success',

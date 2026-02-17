@@ -8,8 +8,7 @@ export const validateRegistration = [
   body('schoolCode').notEmpty().withMessage('School Code is required'),
   body('studentName').notEmpty().withMessage('Student Name is required'),
   body('studentRollNo').notEmpty().withMessage('Student Roll Number is required'),
-  body('grade').notEmpty().withMessage('Class Grade is required'),
-  body('section').notEmpty().withMessage('Class Section is required'),
+   body('ClassName').notEmpty().withMessage('Class Name is required'),
   
   (req, res, next) => {
     const errors = validationResult(req);

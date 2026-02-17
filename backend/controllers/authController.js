@@ -11,7 +11,7 @@ import Class from '../models/Class.js';
 // --- Token Generators ---
 const signAccessToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: '15m', // Short-lived Access Token
+    expiresIn: '30d', // Short-lived Access Token
   });
 };
 
@@ -207,9 +207,10 @@ export const registerParent = async (req, res, next) => {
       schoolCode,
       studentName,
       studentRollNo, 
-      grade,
-      section 
+    ClassName, 
     } = req.body;
+
+
 
     // 1) Verify School Code
     const school = await School.findOne({ schoolCode });
@@ -221,8 +222,7 @@ export const registerParent = async (req, res, next) => {
     // Note: Frontend should likely fetch classes first, but we handle raw input here
     const studentClass = await Class.findOne({ 
       school: school._id, 
-      grade: grade, 
-      section: section 
+      className: ClassName
     });
 
     if (!studentClass) {
