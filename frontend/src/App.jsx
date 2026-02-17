@@ -9,6 +9,7 @@ import ManageTeachers from './pages/ManageTeachers';
 import ManageNotices from './pages/ManageNotices';
 import ActivityLogs from './pages/ActivityLogs';
 import ManageStudents from './pages/ManageStudents';
+import AttendanceDashboard from './pages/AttendanceDashboard';
 import ManageSchools from './pages/superadmin/ManageSchools';
 import { useAuth } from './context/AuthContext';
 
@@ -79,6 +80,7 @@ function App() {
       }>
         <Route index element={<SchoolProfile />} />
         <Route path="classes" element={<ManageClasses />} />
+        <Route path="attendance" element={<AttendanceDashboard />} /> 
         <Route path="students" element={<ManageStudents />} />
         <Route path="subjects" element={<ManageSubjects />} />
         <Route path="teachers" element={<ManageTeachers />} />

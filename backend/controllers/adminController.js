@@ -8,6 +8,7 @@ import Notice from '../models/Notice.js';
 import Homework from '../models/Homework.js';
 import AppError from '../utils/appError.js';
 import Student from '../models/Student.js';
+import Attendance from '../models/Attendance.js';
 
 // --- HELPER FUNCTIONS ---
 
@@ -464,6 +465,80 @@ export const getStudents = async (req, res, next) => {
       .sort({ 'studentClass': 1, 'rollNumber': 1 });
 
     res.status(200).json({ status: 'success', results: students.length, data: { students } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const getDailyAttendance = async (req, res, next) => {
+  try {
+    const schoolId = req.user.school;
+    const { date } = req.query; // Expect YYYY-MM-DD
+
+    // 1. Determine Date Range (Start to End of requested day)
+    let targetDate = date ? new Date(date) : new Date();
+    const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+
+    // 2. Fetch ALL classes for the school
+    const classes = await Class.find({ school: schoolId }).select('className classTeacher');
+
+    // 3. Fetch Attendance records for this date range
+    const attendanceRecords = await Attendance.find({
+      school: schoolId,
+      date: { $gte: startOfDay, $lte: endOfDay }
+    })
+    .populate('takenBy', 'name')
+    .populate('records.student', 'name rollNumber');
+
+    // 4. Map Attendance to Classes
+    // This allows the UI to show which classes haven't taken attendance yet
+    const report = classes.map(cls => {
+      const record = attendanceRecords.find(att => att.class.toString() === cls._id.toString());
+      
+      if (record) {
+
+        if (record.records) {
+            record.records.sort((a, b) => {
+                const rollA = a.student?.rollNumber || '';
+                const rollB = b.student?.rollNumber || '';
+                return rollA.localeCompare(rollB, undefined, { numeric: true });
+            });
+        }
+        // Calculate basic stats
+        const presentCount = record.records.filter(r => r.status === 'Present').length;
+        const absentCount = record.records.filter(r => r.status === 'Absent').length;
+
+        return {
+          classId: cls._id,
+          className: cls.className,
+          status: 'Taken',
+          takenBy: record.takenBy?.name || 'Unknown',
+          takenAt: record.createdAt,
+          stats: { present: presentCount, absent: absentCount },
+          details: record // Include full details for drill-down
+        };
+      } else {
+        return {
+          classId: cls._id,
+          className: cls.className,
+          status: 'Pending',
+          takenBy: null,
+          stats: null,
+          details: null
+        };
+      }
+    });
+
+    res.status(200).json({ 
+      status: 'success', 
+      data: { 
+        date: startOfDay,
+        report 
+      } 
+    });
+
   } catch (error) {
     next(error);
   }
