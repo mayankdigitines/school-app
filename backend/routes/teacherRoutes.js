@@ -8,6 +8,8 @@ import {
     getClassStudents,
     createHomework,
     getTeacherClasses,
+    markAttendance,
+    getAttendanceHistory,
 } from '../controllers/teacherController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 import upload from '../utils/fileUpload.js';
@@ -394,5 +396,53 @@ router.post('/homework', upload.array('attachments', 5), createHomework);
  */
 
 router.get('/classes', getTeacherClasses);
+
+/**
+ * @swagger
+ * /teachers/attendance:
+ * post:
+ * summary: Mark attendance for the assigned class
+ * tags: [Teacher]
+ * requestBody:
+ * required: true
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * required:
+ * - date
+ * properties:
+ * date:
+ * type: string
+ * format: date
+ * absentStudentIds:
+ * type: array
+ * items:
+ * type: string
+ * description: List of student IDs who are absent
+ * responses:
+ * 200:
+ * description: Attendance marked successfully
+ */
+router.post('/attendance', markAttendance);
+
+/**
+ * @swagger
+ * /teachers/attendance:
+ * get:
+ * summary: Get attendance history for the assigned class
+ * tags: [Teacher]
+ * parameters:
+ * - in: query
+ * name: date
+ * schema:
+ * type: string
+ * format: date
+ * description: Optional date to filter
+ * responses:
+ * 200:
+ * description: Attendance history
+ */
+router.get('/attendance', getAttendanceHistory);
 
 export default router;

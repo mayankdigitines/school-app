@@ -18,6 +18,7 @@ import {
     assignSubjectTeacher,
     assignSubjectLoad,
     getNotices,
+    getSchoolAttendance,
 } from '../controllers/adminController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 
@@ -561,5 +562,27 @@ router.get('/notices', getNotices);
  *         description: Activity logs retrieved
  */
 router.get('/homework-logs', getHomeworkActivityLogs);
+
+/**
+ * @swagger
+ * /admin/attendance:
+ * get:
+ * summary: View all attendance logs
+ * tags: [Admin]
+ * parameters:
+ * - in: query
+ * name: classId
+ * schema:
+ * type: string
+ * - in: query
+ * name: date
+ * schema:
+ * type: string
+ * format: date
+ * responses:
+ * 200:
+ * description: Attendance logs
+ */
+router.get('/attendance', getSchoolAttendance);
 
 export default router;

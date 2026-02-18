@@ -5,6 +5,7 @@ import Student from '../models/Student.js';
 import Teacher from '../models/Teacher.js';
 import AppError from '../utils/appError.js';
 import Class from '../models/Class.js';
+import Attendance from '../models/Attendance.js';
 
 // --- DASHBOARD / HOME ---
 
@@ -320,87 +321,6 @@ export const handleStudentRequest = async (req, res, next) => {
   }
 };
 
-
-
-// export const getClassStudents = async (req, res, next) => {
-//   try {
-//     const { classId } = req.query;
-//     const teacherId = req.user._id;
-
-//     let targetClassIds = [];
-
-//     // CASE 1: Specific Class Requested
-//     if (classId) {
-//       // Check if the teacher has ANY authority (Class Teacher OR Subject Teacher) over this specific class
-//       const isAuthorized = await Class.exists({
-//         _id: classId,
-//         $or: [
-//           { classTeacher: teacherId },              // Role 1: Class Teacher
-//           { 'subjectTeachers.teacher': teacherId }  // Role 2: Subject Teacher
-//         ]
-//       });
-
-//       if (!isAuthorized) {
-//         return next(new AppError('You are not authorized to view students for this class.', 403));
-//       }
-
-//       targetClassIds = [classId];
-//     } 
-    
-//     // CASE 2: No Specific Class (Fetch All Authorized Classes)
-//     else {
-//       const authorizedClasses = await Class.find({
-//         $or: [
-//           { classTeacher: teacherId },
-//           { 'subjectTeachers.teacher': teacherId }
-//         ]
-//       }).select('_id').lean();
-
-//       if (!authorizedClasses.length) {
-//         // Return empty list instead of error for better UI handling
-//         return res.status(200).json({
-//           status: 'success',
-//           results: 0,
-//           data: { students: [] }
-//         });
-//       }
-
-//       targetClassIds = authorizedClasses.map(c => c._id);
-//     }
-
-//     // Fetch Students belonging to the target class(es)
-//     const students = await Student.find({ studentClass: { $in: targetClassIds } })
-//       .populate('parent', 'name phone')
-//       .populate('studentClass', 'className')
-//       .sort({ 'studentClass': 1, 'rollNumber': 1 }) // Group by class, then order by roll number
-//       .lean();
-
-//     // Format data for the frontend
-//     const formattedStudents = students.map(student => ({
-//       studentId: student._id,
-//       name: student.name,
-//       rollNumber: student.rollNumber,
-//       className: student.studentClass?.className || 'Unassigned',
-//       classId: student.studentClass?._id,
-//       parent: {
-//         name: student.parent?.name || 'N/A',
-//         phone: student.parent?.phone || 'N/A'
-//       }
-//     }));
-
-//     res.status(200).json({
-//       status: 'success',
-//       results: students.length,
-//       data: { students: formattedStudents }
-//     });
-
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-
-
 export const getClassStudents = async (req, res, next) => {
     try {
         const { classId } = req.query;
@@ -534,6 +454,118 @@ export const getTeacherClasses = async (req, res, next) => {
       results: classes.length,
       data: { classes: formattedClasses }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// --- ATTENDANCE MANAGEMENT (NEW) ---
+
+export const markAttendance = async (req, res, next) => {
+  try {
+    const { date, absentStudentIds } = req.body;
+    
+    // 1. Validation: Only Class Teachers can take attendance
+    if (!req.user.assignedClass) {
+        return next(new AppError('You are not assigned as a Class Teacher.', 403));
+    }
+
+    if (!date) {
+        return next(new AppError('Date is required.', 400));
+    }
+
+    // 2. Fetch all students in the class to build the complete record
+    const students = await Student.find({ 
+        studentClass: req.user.assignedClass, 
+        school: req.user.school 
+    }).select('name rollNumber');
+
+    if (!students.length) {
+        return next(new AppError('No students found in your class.', 404));
+    }
+
+    // 3. Construct Attendance Records
+    // Default everyone to 'Present', mark selected IDs as 'Absent'
+    let presentCount = 0;
+    let absentCount = 0;
+
+    const records = students.map(student => {
+        const isAbsent = absentStudentIds && absentStudentIds.includes(student._id.toString());
+        if (isAbsent) absentCount++; else presentCount++;
+        
+        return {
+            student: student._id,
+            name: student.name,
+            rollNumber: student.rollNumber,
+            status: isAbsent ? 'Absent' : 'Present'
+        };
+    });
+
+    // 4. Normalize Date (Strip time to ensure one entry per day)
+    // Date is in India timezone, so we need to adjust it to UTC before stripping time
+   
+
+   // save local date not utc date
+    let attendanceDate = new Date(date);
+    attendanceDate.setHours(0, 0, 0, 0);
+
+    // 5. Save (Upsert: Create new or Update existing for that day)
+    const attendance = await Attendance.findOneAndUpdate(
+        { 
+            class: req.user.assignedClass, 
+            date: attendanceDate 
+        },
+        {
+            school: req.user.school,
+            teacher: req.user._id,
+            records: records,
+            presentCount,
+            absentCount
+        },
+        { upsert: true, new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+        status: 'success',
+        message: 'Attendance submitted successfully',
+        data: { attendance }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAttendanceHistory = async (req, res, next) => {
+  try {
+    const { date } = req.query; // (YYYY-MM-DD) Optional filter for specific date
+
+    if (!req.user.assignedClass) {
+        return next(new AppError('You are not assigned as a Class Teacher.', 403));
+    }
+
+    const query = { 
+        class: req.user.assignedClass,
+        school: req.user.school
+    };
+
+    // Optional: Filter by specific date
+    if (date) {
+        const queryDate = new Date(date);
+        queryDate.setHours(0, 0, 0, 0);
+        query.date = queryDate;
+    }
+
+    const history = await Attendance.find(query)
+        .sort({ date: -1 }) // Latest first
+        .lean();
+
+    res.status(200).json({
+        status: 'success',
+        results: history.length,
+        data: { history }
+    });
+
   } catch (error) {
     next(error);
   }

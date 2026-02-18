@@ -468,3 +468,32 @@ export const getStudents = async (req, res, next) => {
     next(error);
   }
 };
+
+// --- ADMIN ATTENDANCE LOGS ---
+
+export const getSchoolAttendance = async (req, res, next) => {
+  try {
+    const { classId, date } = req.query;
+    const query = { school: req.user.school };
+
+    if (classId) query.class = classId;
+    if (date) {
+        const queryDate = new Date(date);
+        queryDate.setHours(0, 0, 0, 0);
+        query.date = queryDate;
+    }
+
+    const attendanceRecords = await Attendance.find(query)
+        .populate('class', 'className')
+        .populate('teacher', 'name')
+        .sort({ date: -1, 'class': 1 }); // Sort by Date (newest), then Class
+
+    res.status(200).json({
+        status: 'success',
+        results: attendanceRecords.length,
+        data: { attendance: attendanceRecords }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
