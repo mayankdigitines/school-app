@@ -1,27 +1,3 @@
-// import path from 'path';
-// import { fileURLToPath } from 'url';
-
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
-
-// const swaggerOptions = {
-//   definition: {
-//     openapi: '3.0.0',
-//     info: {
-//       title: 'School Application',
-//       version: '1.0.0',
-//       description: 'API documentation for School App Backend',
-//     },
-//     servers: [
-//       {
-//         url: 'http://localhost:5000/api/v1',
-//         description: 'Local server'
-//       },
-//       {
-//         url: 'https://school-app-backend-new.onrender.com/api/v1',
-//         description: 'Production server'
-//       }
-//     ],
 import path from 'path';
 import { fileURLToPath } from 'url';
 
