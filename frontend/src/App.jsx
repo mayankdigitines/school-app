@@ -110,6 +110,11 @@ import ActivityLogs from './pages/ActivityLogs';
 import ManageStudents from './pages/ManageStudents';
 import AttendanceDashboard from './pages/AttendanceDashboard';
 import ManageSchools from './pages/superadmin/ManageSchools';
+import TeacherLayout from './layouts/TeacherLayout';
+import TeacherDashboard from './pages/teacher/TeacherDashboard';
+import TeacherAttendance from './pages/teacher/TeacherAttendance';
+import TeacherRequests from './pages/teacher/TeacherRequests';
+import CreateHomework from './pages/teacher/CreateHomework';
 import { useAuth } from './context/AuthContext';
 
 // ... (Keep your ProtectedRoute component exactly as is) ...
@@ -121,6 +126,7 @@ const ProtectedRoute = ({ children, allowedRoles, fallbackPath }) => {
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     if (user.role === 'SuperAdmin') return <Navigate to="/super-admin/schools" replace />;
     if (user.role === 'SchoolAdmin') return <Navigate to="/dashboard" replace />;
+    if (user.role === 'Teacher') return <Navigate to="/teacher/dashboard" replace />;
     return <Navigate to="/" replace />;
   }
   return children;
@@ -132,6 +138,7 @@ function App() {
   const getRootRedirect = () => {
     if (user?.role === 'SuperAdmin') return <Navigate to="/super-admin/schools" replace />;
     if (user?.role === 'SchoolAdmin') return <Navigate to="/dashboard" replace />;
+    if (user?.role === 'Teacher') return <Navigate to="/teacher/dashboard" replace />;
     return <Navigate to="/school-login" replace />;
   };
 
@@ -172,6 +179,19 @@ function App() {
           <Route path="logs" element={<ActivityLogs />} />
         </Route>
         
+        {/* --- Teacher Routes --- */}
+        <Route path="/teacher" element={
+          <ProtectedRoute allowedRoles={['Teacher']} fallbackPath="/teacher-login">
+            <TeacherLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<Navigate to="/teacher/dashboard" replace />} />
+          <Route path="dashboard" element={<TeacherDashboard />} />
+          <Route path="attendance" element={<TeacherAttendance />} />
+          <Route path="requests" element={<TeacherRequests />} />
+          <Route path="homework" element={<CreateHomework />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
