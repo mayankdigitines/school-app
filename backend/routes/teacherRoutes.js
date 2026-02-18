@@ -8,6 +8,7 @@ import {
     getClassStudents,
     createHomework,
     getTeacherClasses,
+    getAttendanceStudents,
     markAttendance,
     getAttendanceHistory
 } from '../controllers/teacherController.js';
@@ -403,3 +404,58 @@ router.post('/attendance', markAttendance);
 
 router.get('/attendance', getAttendanceHistory);
 
+/**
+ * @swagger
+ * /teachers/attendance/students:
+ * get:
+ * summary: Get student list for marking attendance (Class Teacher only)
+ * tags: [Teacher]
+ * security:
+ * - bearerAuth: []
+ * parameters:
+ * - in: query
+ * name: date
+ * schema:
+ * type: string
+ * format: date
+ * description: Date to check existing status (YYYY-MM-DD)
+ * responses:
+ * 200:
+ * description: List of students with current/existing status
+ */
+router.get('/attendance/students', getAttendanceStudents); // <--- New Route
+
+
+
+/**
+ * @swagger
+ * /teachers/attendance:
+ * post:
+ * summary: Mark attendance for the assigned class (Class Teacher only)
+ * tags: [Teacher]
+ * security:
+ * - bearerAuth: []
+ * requestBody:
+ * required: true
+ * content:
+ * application/json:
+ * schema:
+ * type: object
+ * required:
+ * - date
+ * - absentStudentIds
+ * properties:
+ * date:
+ * type: string
+ * format: date
+ * description: Date for attendance (YYYY-MM-DD)
+ * absentStudentIds:
+ * type: array
+ * description: Array of student IDs who are absent
+ * items:
+ * type: string
+ */
+router.post('/attendance', markAttendance);
+
+// Optional: Keep history endpoint
+router.get('/attendance/history', getAttendanceHistory);
