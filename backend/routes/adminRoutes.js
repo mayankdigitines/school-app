@@ -25,8 +25,8 @@ import { protect, restrictTo } from '../middleware/authMiddleware.js';
 /**
  * @swagger
  * tags:
- *   name: Admin
- *   description: Admin management routes (SuperAdmin & SchoolAdmin)
+ *   - name: Admin
+ *     description: Admin management routes (SuperAdmin & SchoolAdmin)
  */
 
 const router = express.Router();
@@ -523,7 +523,6 @@ router.get('/subjects', getSubjects);
  */
 router.post('/broadcast', broadcastMessage);
 
-
 /**
  * @swagger
  * /admin/notices:
@@ -543,6 +542,7 @@ router.post('/broadcast', broadcastMessage);
  *                 $ref: '#/components/schemas/Notice'
  */
 router.get('/notices', getNotices);
+
 /**
  * @swagger
  * /admin/homework-logs:
@@ -563,25 +563,21 @@ router.get('/notices', getNotices);
  */
 router.get('/homework-logs', getHomeworkActivityLogs);
 
-
-
-
-// [ADDED] New Attendance Route
 /**
  * @swagger
  * /admin/attendance/daily:
- * get:
- * summary: Get attendance status for all classes on a specific date
- * tags: [Admin]
- * parameters:
- * - in: query
- * name: date
- * schema:
- * type: string
- * format: date
- * responses:
- * 200:
- * description: Attendance report retrieved
+ *   get:
+ *     summary: Get attendance status for all classes on a specific date
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Attendance report retrieved
  */
 router.get('/attendance/daily', getDailyAttendance);
 

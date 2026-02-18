@@ -19,8 +19,8 @@ import { validateNotice } from '../middleware/validators.js';
 /**
  * @swagger
  * tags:
- *   name: Teacher
- *   description: Teacher Dashboard and Management
+ *   - name: Teacher
+ *     description: Teacher Dashboard and Management
  */
 
 const router = express.Router();
