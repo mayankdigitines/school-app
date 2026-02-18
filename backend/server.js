@@ -5,7 +5,7 @@ import app from './app.js'; // Import app after config
 
 const PORT = process.env.PORT || 5000;
 
-await connectDB();
+connectDB();
 
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
