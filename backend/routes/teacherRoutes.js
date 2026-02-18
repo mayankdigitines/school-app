@@ -401,8 +401,6 @@ router.post('/homework', upload.array('attachments', 5), createHomework);
 
 router.get('/classes', getTeacherClasses);
 
-// ...existing code...
-
 /**
  * @swagger
  * /teachers/attendance:
@@ -452,14 +450,8 @@ router.get('/classes', getTeacherClasses);
  *                       type: integer
  *                     absentCount:
  *                       type: integer
- *      
  */
-
-
 router.post('/attendance', markAttendance);
-
-
-
 
 /**
  * @swagger
@@ -519,67 +511,42 @@ router.post('/attendance', markAttendance);
  *       403:
  *         description: Forbidden
  */
-
-
 router.get('/attendance', getAttendanceHistory);
 
 /**
  * @swagger
  * /teachers/attendance/students:
- * get:
- * summary: Get student list for marking attendance (Class Teacher only)
- * tags: [Teacher]
- * security:
- * - bearerAuth: []
- * parameters:
- * - in: query
- * name: date
- * schema:
- * type: string
- * format: date
- * description: Date to check existing status (YYYY-MM-DD)
- * responses:
- * 200:
- * description: List of students with current/existing status
+ *   get:
+ *     summary: Get student list for marking attendance (Class Teacher only)
+ *     tags: [Teacher]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         required: false
+ *         description: Date to check existing status (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: List of students with current/existing status
  */
-router.get('/attendance/students', getAttendanceStudents); // <--- New Route
-
-
+router.get('/attendance/students', getAttendanceStudents);
 
 /**
  * @swagger
- * /teachers/attendance:
- * post:
- * summary: Mark attendance for the assigned class (Class Teacher only)
- * tags: [Teacher]
- * security:
- * - bearerAuth: []
- * requestBody:
- * required: true
- * content:
- * application/json:
- * schema:
- * type: object
- * required:
- * - date
- * - absentStudentIds
- * properties:
- * date:
- * type: string
- * format: date
- * description: Date for attendance (YYYY-MM-DD)
- * absentStudentIds:
- * type: array
- * description: Array of student IDs who are absent
- * items:
- * type: string
+ * /teachers/attendance/history:
+ *   get:
+ *     summary: Get attendance history (alternative endpoint)
+ *     tags: [Teacher]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Attendance history retrieved successfully
  */
-router.post('/attendance', markAttendance);
-
-// Optional: Keep history endpoint
 router.get('/attendance/history', getAttendanceHistory);
-
-
-
 
 export default router;
