@@ -180,7 +180,7 @@ export const getTeacherHome = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(5)
       .populate('class', 'className')
-      .populate('subject', 'name')
+    .populate('subjects', 'name subjectIcon')
       .lean();
 
      const mylatestNotices = await Notice.find({ 
@@ -206,9 +206,8 @@ export const getTeacherHome = async (req, res, next) => {
         className: cls.className
       })),
       assignedClass: classTeacherData, 
-      subjects: teacher.subjects.map(sub => ({ subjectName: sub.name, subjectId: sub._id,
-        
-       })),
+      // want subject icon too? then we need to store icon path in subject model and populate it here
+      subjects: teacher.subjects.map(sub => ({ subjectName: sub.name, subjectId: sub._id, subjectIcon: sub.subjectIcon || null })),
       myRecentHomeworks: myLatestHomeworks.map(hw => ({
         homeworkId: hw._id,
         description: hw.description,

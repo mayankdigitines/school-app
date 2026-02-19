@@ -6,7 +6,7 @@ const __dirname = path.dirname(__filename);
 
 // Determine the server URL based on the environment
 const serverUrl = process.env.NODE_ENV === 'production' 
-  ? 'https://school-app-backend-new.onrender.com/api/v1' 
+  ? 'https://powderblue-horse-756768.hostingersite.com/api/v1' 
   : 'http://localhost:5000/api/v1';
 
 const swaggerOptions = {

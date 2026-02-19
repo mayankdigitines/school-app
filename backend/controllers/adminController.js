@@ -8,8 +8,7 @@ import Notice from '../models/Notice.js';
 import Homework from '../models/Homework.js';
 import AppError from '../utils/appError.js';
 import Student from '../models/Student.js';
-import { generateAndSaveSubjectIcon } from '../utils/generatesvg.js';
-// --- HELPER FUNCTIONS ---
+import { generateSubjectIcon } from '../utils/generatesvg.js';// --- HELPER FUNCTIONS ---
 
 const generateSchoolCode = (schoolName) => {
     let cleanName = schoolName
@@ -143,90 +142,181 @@ export const addClass = async (req, res, next) => {
 
 // --- TEACHER MANAGEMENT (UPDATED) ---
 
-export const createTeacher = async (req, res, next) => {
-  // Start a transaction session
-  const session = await mongoose.startSession();
-  session.startTransaction();
+// export const createTeacher = async (req, res, next) => {
+//   // Start a transaction session
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
 
+//   try {
+//     // 1. Get Inputs (No email/phone required)
+//     // subjects: Array of Subject IDs
+//     // teachingClasses: Array of Class IDs where this teacher teaches the subjects
+//     // assignedClassId: Class ID if they are a Class Teacher
+//     const { name, password, subjects, assignedClassId, teachingClasses } = req.body;
+//     const schoolId = req.user.school;
+
+//     // 2. Validation
+//     if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
+//         throw new AppError('Please select at least one subject.', 400);
+//     }
+    
+//     // 3. Generate Username & Create Teacher Object
+//     const username = await generateTeacherUsername(name);
+    
+//     const newTeacher = new Teacher({
+//       name,
+//       username,
+//       password,
+//       subjects, // Stores ObjectIds now
+//       school: schoolId,
+//     });
+
+//     // 4. Handle Class Teacher Logic
+//     if (assignedClassId) {
+//         if (!assignedClassId) {
+//             throw new AppError('Please select a class to assign as Class Teacher.', 400);
+//         }
+
+//         // Check availability strictly within transaction
+//         const classDoc = await Class.findOne({ _id: assignedClassId, school: schoolId }).session(session);
+        
+//         if (!classDoc) throw new AppError('Invalid Class selected for Class Teacher.', 404);
+        
+//         if (classDoc.classTeacher) {
+//             throw new AppError(`Class ${classDoc.grade}-${classDoc.section} already has a Class Teacher.`, 409);
+//         }
+
+//         // Link them
+//         classDoc.classTeacher = newTeacher._id;
+//         await classDoc.save({ session });
+
+//         newTeacher.assignedClass = classDoc._id;
+//     }
+
+//     // Save teacher first to generate _id
+//     await newTeacher.save({ session });
+
+//     // 5. Handle Subject Teacher Logic (Teaching Classes)
+//     if (teachingClasses && Array.isArray(teachingClasses) && teachingClasses.length > 0) {
+//         // We need to update each class to say: "This teacher teaches these subjects here"
+        
+//         for (const classId of teachingClasses) {
+//             const classDoc = await Class.findOne({ _id: classId, school: schoolId }).session(session);
+            
+//             if (classDoc) {
+//                 // Prepare new assignments
+//                 const newAssignments = subjects.map(subjectId => ({
+//                     subject: subjectId,
+//                     teacher: newTeacher._id
+//                 }));
+
+//                 // Remove OLD teachers for these specific subjects to avoid duplicates/conflicts
+//                 // We filter OUT any existing entry where the subject matches one of the new teacher's subjects
+//                 classDoc.subjectTeachers = classDoc.subjectTeachers.filter(
+//                     st => !subjects.includes(st.subject.toString())
+//                 );
+
+//                 // Add NEW assignments
+//                 classDoc.subjectTeachers.push(...newAssignments);
+
+//                 await classDoc.save({ session });
+//             }
+//         }
+//     }
+
+//     // 6. Commit Transaction
+//     await session.commitTransaction();
+
+//     // Hide password before response
+//     newTeacher.password = undefined;
+
+//     res.status(201).json({
+//       status: 'success',
+//       data: {
+//         teacher: newTeacher,
+//       },
+//     });
+
+//   } catch (error) {
+//     // Abort transaction on any error
+//     await session.abortTransaction();
+    
+//     if (error.code === 11000 && error.keyPattern && error.keyPattern.username) {
+//         return next(new AppError('System error generating username. Please try again.', 400));
+//     }
+//     next(error);
+//   } finally {
+//     session.endSession();
+//   }
+// };
+
+
+export const createTeacher = async (req, res, next) => {
   try {
-    // 1. Get Inputs (No email/phone required)
-    // subjects: Array of Subject IDs
-    // teachingClasses: Array of Class IDs where this teacher teaches the subjects
-    // assignedClassId: Class ID if they are a Class Teacher
+    // 1. Get Inputs
     const { name, password, subjects, assignedClassId, teachingClasses } = req.body;
     const schoolId = req.user.school;
 
     // 2. Validation
     if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
-        throw new AppError('Please select at least one subject.', 400);
+      throw new AppError('Please select at least one subject.', 400);
     }
-    
+
     // 3. Generate Username & Create Teacher Object
     const username = await generateTeacherUsername(name);
-    
+
     const newTeacher = new Teacher({
       name,
       username,
       password,
-      subjects, // Stores ObjectIds now
+      subjects,
       school: schoolId,
     });
 
     // 4. Handle Class Teacher Logic
     if (assignedClassId) {
-        if (!assignedClassId) {
-            throw new AppError('Please select a class to assign as Class Teacher.', 400);
-        }
+      const classDoc = await Class.findOne({ _id: assignedClassId, school: schoolId });
 
-        // Check availability strictly within transaction
-        const classDoc = await Class.findOne({ _id: assignedClassId, school: schoolId }).session(session);
-        
-        if (!classDoc) throw new AppError('Invalid Class selected for Class Teacher.', 404);
-        
-        if (classDoc.classTeacher) {
-            throw new AppError(`Class ${classDoc.grade}-${classDoc.section} already has a Class Teacher.`, 409);
-        }
+      if (!classDoc) throw new AppError('Invalid Class selected for Class Teacher.', 404);
 
-        // Link them
-        classDoc.classTeacher = newTeacher._id;
-        await classDoc.save({ session });
+      if (classDoc.classTeacher) {
+        throw new AppError(`Class ${classDoc.grade}-${classDoc.section} already has a Class Teacher.`, 409);
+      }
 
-        newTeacher.assignedClass = classDoc._id;
+      // Link them
+      classDoc.classTeacher = newTeacher._id;
+      await classDoc.save();
+
+      newTeacher.assignedClass = classDoc._id;
     }
 
     // Save teacher first to generate _id
-    await newTeacher.save({ session });
+    await newTeacher.save();
 
     // 5. Handle Subject Teacher Logic (Teaching Classes)
     if (teachingClasses && Array.isArray(teachingClasses) && teachingClasses.length > 0) {
-        // We need to update each class to say: "This teacher teaches these subjects here"
-        
-        for (const classId of teachingClasses) {
-            const classDoc = await Class.findOne({ _id: classId, school: schoolId }).session(session);
-            
-            if (classDoc) {
-                // Prepare new assignments
-                const newAssignments = subjects.map(subjectId => ({
-                    subject: subjectId,
-                    teacher: newTeacher._id
-                }));
+      for (const classId of teachingClasses) {
+        const classDoc = await Class.findOne({ _id: classId, school: schoolId });
 
-                // Remove OLD teachers for these specific subjects to avoid duplicates/conflicts
-                // We filter OUT any existing entry where the subject matches one of the new teacher's subjects
-                classDoc.subjectTeachers = classDoc.subjectTeachers.filter(
-                    st => !subjects.includes(st.subject.toString())
-                );
+        if (classDoc) {
+          // Prepare new assignments
+          const newAssignments = subjects.map(subjectId => ({
+            subject: subjectId,
+            teacher: newTeacher._id,
+          }));
 
-                // Add NEW assignments
-                classDoc.subjectTeachers.push(...newAssignments);
+          // Remove OLD teachers for these specific subjects to avoid duplicates/conflicts
+          classDoc.subjectTeachers = classDoc.subjectTeachers.filter(
+            st => !subjects.includes(st.subject.toString())
+          );
 
-                await classDoc.save({ session });
-            }
+          // Add NEW assignments
+          classDoc.subjectTeachers.push(...newAssignments);
+
+          await classDoc.save();
         }
+      }
     }
-
-    // 6. Commit Transaction
-    await session.commitTransaction();
 
     // Hide password before response
     newTeacher.password = undefined;
@@ -237,19 +327,11 @@ export const createTeacher = async (req, res, next) => {
         teacher: newTeacher,
       },
     });
-
   } catch (error) {
-    // Abort transaction on any error
-    await session.abortTransaction();
-    
-    if (error.code === 11000 && error.keyPattern && error.keyPattern.username) {
-        return next(new AppError('System error generating username. Please try again.', 400));
-    }
     next(error);
-  } finally {
-    session.endSession();
   }
 };
+
 
 export const getTeachers = async (req, res, next) => {
     try {
@@ -410,6 +492,43 @@ export const assignSubjectTeacher = async (req, res, next) => {
 // };
 
 
+// export const addSubject = async (req, res, next) => {
+//   try {
+//     const { name } = req.body;
+    
+//     // 1. Validation
+//     if (!name || typeof name !== 'string' || !name.trim()) {
+//         return res.status(400).json({ status: 'fail', message: 'Subject name is required.' });
+//     }
+
+//     const schoolId = req.user.school;
+//     const normalizedName = name.trim();
+
+//     // 2. Generate and Save Icon (Now returns "uploads/subject-xyz.svg")
+//     const subjectIconPath = generateAndSaveSubjectIcon(normalizedName);
+
+//     // 3. Create Subject
+//     const subject = await Subject.create({ 
+//         name: normalizedName, 
+//         school: schoolId,
+//         subjectIcon: subjectIconPath // Stores short path: "uploads/..."
+//     });
+
+//     res.status(201).json({
+//         status: 'success', 
+//         data: { subject } 
+//     });
+
+//   } catch (error) {
+//     if (error.code === 11000 && error.keyPattern && error.keyPattern.name) {
+//          return res.status(409).json({ status: 'fail', message: `The subject "${req.body.name}" already exists.` });
+//     }
+//     next(error);
+//   }
+// };
+
+
+
 export const addSubject = async (req, res, next) => {
   try {
     const { name } = req.body;
@@ -422,17 +541,19 @@ export const addSubject = async (req, res, next) => {
     const schoolId = req.user.school;
     const normalizedName = name.trim();
 
-    // 2. Generate and Save Icon (Now returns "uploads/subject-xyz.svg")
-    const subjectIconPath = generateAndSaveSubjectIcon(normalizedName);
+    // 2. Generate Icon (Now returns a clean Data URI)
+    const subjectIcon = generateSubjectIcon(normalizedName);
 
     // 3. Create Subject
     const subject = await Subject.create({ 
         name: normalizedName, 
         school: schoolId,
-        subjectIcon: subjectIconPath // Stores short path: "uploads/..."
+        subjectIcon: subjectIcon 
     });
 
-    res.status(201).json({
+    // [FIX] Send ONLY the subject object. 
+    // Do not add 'icon: subjectIcon' here to avoid duplication.
+    res.status(201).json({ 
         status: 'success', 
         data: { subject } 
     });
@@ -444,6 +565,8 @@ export const addSubject = async (req, res, next) => {
     next(error);
   }
 };
+
+
 
 
 
