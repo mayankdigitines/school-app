@@ -8,7 +8,7 @@ import Notice from '../models/Notice.js';
 import Homework from '../models/Homework.js';
 import AppError from '../utils/appError.js';
 import Student from '../models/Student.js';
-
+import { generateAndSaveSubjectIcon } from '../utils/generatesvg.js';
 // --- HELPER FUNCTIONS ---
 
 const generateSchoolCode = (schoolName) => {
@@ -384,16 +384,59 @@ export const assignSubjectTeacher = async (req, res, next) => {
     }
 };
 
+// export const addSubject = async (req, res, next) => {
+//   try {
+//     const { name } = req.body;
+//     if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ status: 'fail', message: 'Subject name is required.' });
+  
+
+//     const schoolId = req.user.school;
+//     const normalizedName = name.trim();
+
+//       const subjectIcon = generateSubjectIcon(normalizedName);
+//     const subject = await Subject.create({ name: normalizedName,
+//        school: schoolId,
+//       subjectIcon: subjectIcon
+//       });
+
+
+//     res.status(201).json({ status: 'success', data: { subject } });
+//   } catch (error) {
+//     if (error.code === 11000 && error.keyPattern && error.keyPattern.name) {
+//          return res.status(409).json({ status: 'fail', message: `The subject "${req.body.name}" already exists.` });
+//     }
+//     next(error);
+//   }
+// };
+
+
 export const addSubject = async (req, res, next) => {
   try {
     const { name } = req.body;
-    if (!name || typeof name !== 'string' || !name.trim()) return res.status(400).json({ status: 'fail', message: 'Subject name is required.' });
+    
+    // 1. Validation
+    if (!name || typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ status: 'fail', message: 'Subject name is required.' });
+    }
 
     const schoolId = req.user.school;
     const normalizedName = name.trim();
-    const subject = await Subject.create({ name: normalizedName, school: schoolId });
 
-    res.status(201).json({ status: 'success', data: { subject } });
+    // 2. Generate and Save Icon (Now returns "uploads/subject-xyz.svg")
+    const subjectIconPath = generateAndSaveSubjectIcon(normalizedName);
+
+    // 3. Create Subject
+    const subject = await Subject.create({ 
+        name: normalizedName, 
+        school: schoolId,
+        subjectIcon: subjectIconPath // Stores short path: "uploads/..."
+    });
+
+    res.status(201).json({
+        status: 'success', 
+        data: { subject } 
+    });
+
   } catch (error) {
     if (error.code === 11000 && error.keyPattern && error.keyPattern.name) {
          return res.status(409).json({ status: 'fail', message: `The subject "${req.body.name}" already exists.` });
@@ -401,6 +444,8 @@ export const addSubject = async (req, res, next) => {
     next(error);
   }
 };
+
+
 
 export const getSubjects = async (req, res, next) => {
   try {

@@ -27,17 +27,18 @@ const router = express.Router();
 router.use(protect);
 router.use(restrictTo('Teacher'));
 
+
 /**
  * @swagger
  * /teachers/home:
  *   get:
- *     summary: Get teacher dashboard/home data
+ *     summary: Fetch teacher dashboard data
  *     tags: [Teacher]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Teacher dashboard data
+ *         description: Teacher dashboard data retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -49,133 +50,121 @@ router.use(restrictTo('Teacher'));
  *                 data:
  *                   type: object
  *                   properties:
- *                     teacher:
+ *                     teacherId:
+ *                       type: string
+ *                       example: "65e1234567890abcdef12345"
+ *                     name:
+ *                       type: string
+ *                       example: "John Doe"
+ *                     username:
+ *                       type: string
+ *                       example: "john1234"
+ *                     school:
  *                       type: object
  *                       properties:
- *                         teacherId:
+ *                         schoolId:
  *                           type: string
  *                           example: "65e1234567890abcdef12345"
- *                         name:
+ *                         schoolName:
  *                           type: string
- *                           example: "John Doe"
- *                         username:
+ *                           example: "Springfield High"
+ *                         schoolCode:
  *                           type: string
- *                           example: "john1234"
- *                         school:
+ *                           example: "SPH001"
+ *                     teachingClasses:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           classId:
+ *                             type: string
+ *                             example: "65e1234567890abcdef11111"
+ *                           className:
+ *                             type: string
+ *                             example: "10A"
+ *                     assignedClass:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         classId:
+ *                           type: string
+ *                           example: "65e1234567890abcdef22222"
+ *                         className:
+ *                           type: string
+ *                           example: "8B"
+ *                         todaysAttendance:
  *                           type: object
  *                           properties:
- *                             schoolId:
- *                               type: string
- *                               example: "65e1234567890abcdef12345"
- *                             schoolName:
- *                               type: string
- *                               example: "Springfield High"
- *                             schoolCode:
- *                               type: string
- *                               example: "SPH001"
- *                             contactInfo:
- *                               type: object
- *                               additionalProperties: true
- *                         teachingClasses:
- *                           type: array
- *                           items:
- *                             type: object
- *                             properties:
- *                               classId:
- *                                 type: string
- *                                 example: "65e1234567890abcdef11111"
- *                               className:
- *                                 type: string
- *                                 example: "10A"
- *                         assignedClass:
- *                           type: object
- *                           nullable: true
- *                           properties:
- *                             classId:
- *                               type: string
- *                               example: "65e1234567890abcdef22222"
- *                             className:
- *                               type: string
- *                               example: "8B"
- *                             todaysAttendance:
- *                               type: object
- *                               properties:
- *                                 percentage:
- *                                   type: number
- *                                   example: 92.5
- *                                 presentCount:
- *                                   type: integer
- *                                   example: 28
- *                                 absentCount:
- *                                   type: integer
- *                                   example: 2
- *                                 totalStudents:
- *                                   type: integer
- *                                   example: 30
- *                                 isTaken:
- *                                   type: boolean
- *                                   example: true
- *                             parentRequests:
+ *                             percentage:
+ *                               type: number
+ *                               example: 92.5
+ *                             presentCount:
  *                               type: integer
- *                               example: 3
- *                         subjects:
- *                           type: array
- *                           items:
- *                             type: object
- *                             properties:
- *                               subjectName:
- *                                 type: string
- *                                 example: "Mathematics"
- *                               subjectId:
- *                                 type: string
- *                                 example: "65e1234567890abcdef33333"
- *                         recentHomeworks:
- *                           type: array
- *                           items:
- *                             type: object
- *                             properties:
- *                               homeworkId:
- *                                 type: string
- *                                 example: "65e1234567890abcdef44444"
- *                               description:
- *                                 type: string
- *                                 example: "Solve chapter 5 exercises"
- *                               subject:
- *                                 type: string
- *                                 example: "Mathematics"
- *                               className:
- *                                 type: string
- *                                 example: "10A"
- *                               teacherName:
- *                                 type: string
- *                                 example: "John Doe"
- *                               dueDate:
- *                                 type: string
- *                                 format: date
- *                                 example: "2024-06-20"
- *                               attachments:
- *                                 type: array
- *                                 items:
- *                                   type: string
- *                               createdAt:
- *                                 type: string
- *                                 format: date-time
- *                                 example: "2024-06-10T12:00:00.000Z"
- *                         createdAt:
- *                           type: string
- *                           format: date-time
- *                           example: "2024-06-01T08:00:00.000Z"
- *                         updatedAt:
- *                           type: string
- *                           format: date-time
- *                           example: "2024-06-15T10:00:00.000Z"
+ *                               example: 28
+ *                             absentCount:
+ *                               type: integer
+ *                               example: 2
+ *                             totalStudents:
+ *                               type: integer
+ *                               example: 30
+ *                             isTaken:
+ *                               type: boolean
+ *                               example: true
+ *                         parentRequests:
+ *                           type: integer
+ *                           example: 3
+ *                     subjects:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           subjectName:
+ *                             type: string
+ *                             example: "Mathematics"
+ *                           subjectId:
+ *                             type: string
+ *                             example: "65e1234567890abcdef33333"
+ *                     recentHomeworks:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           homeworkId:
+ *                             type: string
+ *                             example: "65e1234567890abcdef44444"
+ *                           description:
+ *                             type: string
+ *                             example: "Solve chapter 5 exercises"
+ *                           subject:
+ *                             type: string
+ *                             example: "Mathematics"
+ *                           className:
+ *                             type: string
+ *                             example: "10A"
+ *                           dueDate:
+ *                             type: string
+ *                             format: date
+ *                             example: "2024-06-20"
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2024-06-10T12:00:00.000Z"
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-06-01T08:00:00.000Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2024-06-15T10:00:00.000Z"
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized - Invalid or missing token
  *       403:
- *         description: Forbidden
+ *         description: Forbidden - Access restricted to teachers
  *       404:
  *         description: Teacher profile not found
  */
+
 router.get('/home', getTeacherHome);
 
 /**
