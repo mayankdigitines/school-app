@@ -8,6 +8,7 @@ import Notice from '../models/Notice.js';
 import Homework from '../models/Homework.js';
 import AppError from '../utils/appError.js';
 import Student from '../models/Student.js';
+import Attendance from '../models/Attendance.js';
 import { generateSubjectIcon } from '../utils/generatesvg.js';// --- HELPER FUNCTIONS ---
 
 const generateSchoolCode = (schoolName) => {

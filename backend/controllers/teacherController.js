@@ -316,6 +316,10 @@ export const getTeacherHome = async (req, res, next) => {
       .limit(5)
       .select('title content audience postedBy createdAt')
       .lean();
+    const myTodaysAttendance = await Attendance.findOne({
+        class: teacher.assignedClass?._id,
+        date: new Date().setHours(0, 0, 0, 0)
+    }).select('presentCount absentCount date').lean();
       
     const formattedData = {
       teacherId: teacher._id,
@@ -330,15 +334,12 @@ export const getTeacherHome = async (req, res, next) => {
         classId: cls._id,
         className: cls.className
       })),
-      assignedClass: classTeacherData, 
-      
-      // FIX 3: Icons will now correctly map because they were fetched
+      assignedClass: classTeacherData,
       subjects: teacher.subjects.map(sub => ({ 
           subjectName: sub.name, 
           subjectId: sub._id, 
           subjectIcon: sub.subjectIcon 
       })),
-      
       myRecentHomeworks: myLatestHomeworks.map(hw => ({
         homeworkId: hw._id,
         description: hw.description,
@@ -355,7 +356,10 @@ export const getTeacherHome = async (req, res, next) => {
         postedBy: notice.postedBy?.role === 'SchoolAdmin' ? 'Admin' : notice.postedBy?.name,
         createdAt: notice.createdAt,
       })),
-      createdAt: teacher.createdAt
+      todaysAttendance: {
+        ...myTodaysAttendance, 
+        date: new Date(myTodaysAttendance?.date).toDateString({timezone: 'Asia/Kolkata'})
+      },
     };
 
     res.status(200).json({
@@ -636,42 +640,13 @@ export const getClassStudents = async (req, res, next) => {
 };
 
 
-
-// export const createHomework = async (req, res, next) => {
-//   try {
-//     const { description, subjectId, classId, dueDate } = req.body;
-    
-//     let attachments = [];
-//     if (req.files) {
-//         attachments = req.files.map(file => file.path);
-//     }
-
-//     const newHomework = await Homework.create({
-//       description,
-//       subject: subjectId,
-//       class: classId,
-//       teacher: req.user._id,
-//       school: req.user.school,
-//       dueDate,
-//       attachments
-//     });
-
-//     res.status(201).json({
-//       status: 'success',
-//       data: { homework: newHomework }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
 export const createHomework = async (req, res, next) => {
   try {
-    const { description, subjectId, classId, dueDate } = req.body;
+    const { description, subjectId, classId } = req.body;
     
     // 1. Production Validation: Fail fast if data is missing
-    if (!description || !subjectId || !classId || !dueDate) {
-        return next(new AppError('Please provide description, subject, class, and due date.', 400));
+    if (!description || !subjectId || !classId) {
+        return next(new AppError('Please provide description, subject, and class.', 400));
     }
 
     // 2. Handle Files Safely
@@ -687,7 +662,6 @@ export const createHomework = async (req, res, next) => {
       class: classId,
       teacher: req.user._id,
       school: req.user.school,
-      dueDate,
       attachments
     });
 
