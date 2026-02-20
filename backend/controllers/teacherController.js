@@ -49,7 +49,7 @@ export const getTeacherHome = async (req, res, next) => {
       classTeacherData = {
         classId: teacher.assignedClass._id,
         className: teacher.assignedClass.className,
-        pendingRequests: pendingRequestsCount
+        
       };
     }
 
@@ -112,6 +112,7 @@ export const getTeacherHome = async (req, res, next) => {
         postedBy: notice.postedBy?.role === 'SchoolAdmin' ? 'Admin' : notice.postedBy?.name,
         createdAt: notice.createdAt,
       })),
+      
       todaysAttendance: {
         ...myTodaysAttendance, 
         date: new Date(myTodaysAttendance?.date).toDateString({timezone: 'Asia/Kolkata'})
