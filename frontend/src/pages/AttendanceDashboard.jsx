@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import api from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,105 +27,191 @@ import {
   Search,
   Eye,
   MoreHorizontal,
-  X,
-  Filter
+  Filter,
+  History,
+  TrendingUp
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 const AttendanceDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState([]);
-  const [filteredReport, setFilteredReport] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [summary, setSummary] = useState({ total: 0, taken: 0, pending: 0 });
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Dialog State
+  // Class Details Dialog State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
-  
-  // Dialog Filters (Optimization for large classes)
   const [studentSearch, setStudentSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  useEffect(() => {
-    fetchAttendance();
+  // Student History Dialog State
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [studentHistoryData, setStudentHistoryData] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const fetchAttendanceData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [classesRes, attendanceRes] = await Promise.all([
+        api.get('/admin/classes'),
+        api.get('/admin/attendance', { params: { date: selectedDate } })
+      ]);
+      
+      const classes = classesRes.data?.data?.classes || [];
+      const attendanceRecords = attendanceRes.data?.data?.attendance || [];
+
+      const fullReport = classes.map(cls => {
+        const classIdStr = cls._id || cls.classId;
+        const record = attendanceRecords.find(a => 
+          (a.class && a.class._id === classIdStr) || a.class === classIdStr
+        );
+
+        if (record) {
+          return {
+            classId: classIdStr,
+            className: cls.className,
+            status: 'Taken',
+            takenBy: record.teacher?.name || 'Unknown',
+            takenAt: record.createdAt || record.date,
+            stats: {
+              present: record.presentCount || 0,
+              absent: record.absentCount || 0
+            },
+            details: {
+              records: record.records || []
+            }
+          };
+        } else {
+          return {
+            classId: classIdStr,
+            className: cls.className,
+            status: 'Pending',
+            takenBy: null,
+            takenAt: null,
+            stats: null,
+            details: null
+          };
+        }
+      });
+
+      fullReport.sort((a, b) => a.className.localeCompare(b.className));
+      setReport(fullReport);
+      
+      const takenCount = fullReport.filter(c => c.status === 'Taken').length;
+      setSummary({
+        total: fullReport.length,
+        taken: takenCount,
+        pending: fullReport.length - takenCount
+      });
+
+    } catch (error) {
+      console.error("Failed to fetch attendance data", error);
+      toast.error(error.response?.data?.message || "Could not load attendance records");
+      setReport([]);
+      setSummary({ total: 0, taken: 0, pending: 0 });
+    } finally {
+      setLoading(false);
+    }
   }, [selectedDate]);
 
-  // Handle Main Table Search
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredReport(report);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = report.filter(item => 
-        item.className.toLowerCase().includes(query) || 
-        (item.takenBy && item.takenBy.toLowerCase().includes(query))
-      );
-      setFilteredReport(filtered);
-    }
+    fetchAttendanceData();
+  }, [fetchAttendanceData]);
+
+  const filteredReport = useMemo(() => {
+    if (!searchQuery.trim()) return report;
+    const query = searchQuery.toLowerCase();
+    return report.filter(item => 
+      item.className?.toLowerCase().includes(query) || 
+      item.takenBy?.toLowerCase().includes(query)
+    );
   }, [searchQuery, report]);
 
-  // Compute Filtered Students for Dialog (Memoized for performance)
   const dialogStudents = useMemo(() => {
     if (!selectedClass?.details?.records) return [];
 
     let data = selectedClass.details.records;
 
-    // 1. Status Filter
     if (statusFilter !== "All") {
         data = data.filter(r => r.status === statusFilter);
     }
 
-    // 2. Search Filter
     if (studentSearch.trim()) {
         const q = studentSearch.toLowerCase();
-        data = data.filter(r => 
-            r.student?.name?.toLowerCase().includes(q) || 
-            r.student?.rollNumber?.toString().includes(q)
-        );
+        data = data.filter(r => {
+            const studentName = (r.name || "").toLowerCase();
+            const studentRoll = (r.rollNumber || "").toString().toLowerCase();
+            return studentName.includes(q) || studentRoll.includes(q);
+        });
     }
 
     return data;
   }, [selectedClass, statusFilter, studentSearch]);
-
-  const fetchAttendance = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get(`/admin/attendance/daily?date=${selectedDate}`);
-      const data = response.data?.data?.report || [];
-      
-      setReport(data);
-      setFilteredReport(data);
-      
-      // Calculate summary
-      const taken = data.filter(c => c.status === 'Taken').length;
-      setSummary({
-        total: data.length,
-        taken: taken,
-        pending: data.length - taken
-      });
-
-    } catch (error) {
-      console.error("Failed to fetch attendance", error);
-      toast.error("Could not load attendance records");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleViewDetails = (classData) => {
     if (classData.status !== 'Taken') {
         toast.info(`Attendance for Class ${classData.className} hasn't been marked yet.`);
         return;
     }
-    // Reset filters
     setStudentSearch("");
     setStatusFilter("All");
-    
     setSelectedClass(classData);
     setIsDialogOpen(true);
   };
+
+  // --- NEW: Fetch Individual Student History ---
+  const handleViewStudentHistory = async (studentRecord) => {
+    setSelectedStudent(studentRecord);
+    setIsHistoryDialogOpen(true);
+    setLoadingHistory(true);
+    
+    try {
+        // Fetch all attendance records for this specific class
+        const res = await api.get('/admin/attendance', { 
+            params: { classId: selectedClass.classId } 
+        });
+        
+        const classAttendanceLogs = res.data?.data?.attendance || [];
+        
+        // Filter and map to get only this student's records
+        const history = classAttendanceLogs.map(log => {
+            // Find this student in the daily log
+            const st = log.records.find(r => 
+                (r.student === studentRecord.student) || 
+                (r.student?._id === studentRecord.student)
+            );
+            
+            return {
+                id: log._id,
+                date: log.date,
+                teacher: log.teacher?.name || 'Unknown',
+                status: st ? st.status : 'Unrecorded'
+            };
+        })
+        .filter(record => record.status !== 'Unrecorded') // Drop days they weren't enrolled/recorded
+        .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort newest first
+
+        setStudentHistoryData(history);
+    } catch (error) {
+        console.error("Failed to fetch student history", error);
+        toast.error("Could not load student attendance history.");
+    } finally {
+        setLoadingHistory(false);
+    }
+  };
+
+  // Compute stats for student history
+  const historyStats = useMemo(() => {
+    const present = studentHistoryData.filter(h => h.status === 'Present').length;
+    const absent = studentHistoryData.filter(h => h.status === 'Absent').length;
+    const total = present + absent;
+    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+    
+    return { present, absent, total, percentage };
+  }, [studentHistoryData]);
 
   const getStatusBadge = (status) => {
     switch(status) {
@@ -137,7 +223,8 @@ const AttendanceDashboard = () => {
 
   return (
     <div className="space-y-6 h-full">
-      {/* Page Header */}
+      {/* ... [KEEP PREVIOUS PAGE HEADER AND STATS SUMMARY IDENTICAL] ... */}
+      
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -159,11 +246,11 @@ const AttendanceDashboard = () => {
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="border-0 focus-visible:ring-0 w-auto shadow-none p-0 h-auto cursor-pointer font-medium"
+                max={new Date().toISOString().split('T')[0]}
             />
         </div>
       </div>
 
-      {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-white shadow-sm border-l-4 border-l-green-500">
             <CardContent className="pt-6">
@@ -219,7 +306,7 @@ const AttendanceDashboard = () => {
                 <div className="relative w-full sm:w-72">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                     <Input
-                        placeholder="Search class..."
+                        placeholder="Search class or teacher..."
                         className="pl-9 bg-white"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -243,16 +330,16 @@ const AttendanceDashboard = () => {
                     {loading ? (
                         [...Array(5)].map((_, i) => (
                             <TableRow key={i}>
-                                <TableCell><div className="h-4 w-20 bg-slate-200 rounded animate-pulse"></div></TableCell>
-                                <TableCell><div className="h-4 w-16 bg-slate-200 rounded animate-pulse"></div></TableCell>
-                                <TableCell><div className="h-4 w-32 bg-slate-200 rounded animate-pulse"></div></TableCell>
-                                <TableCell colSpan={3}><div className="h-4 w-full bg-slate-200 rounded animate-pulse"></div></TableCell>
+                                <TableCell><div className="h-4 w-20 bg-slate-200 rounded animate-pulse" /></TableCell>
+                                <TableCell><div className="h-4 w-16 bg-slate-200 rounded animate-pulse" /></TableCell>
+                                <TableCell><div className="h-4 w-32 bg-slate-200 rounded animate-pulse" /></TableCell>
+                                <TableCell colSpan={3}><div className="h-4 w-full bg-slate-200 rounded animate-pulse" /></TableCell>
                             </TableRow>
                         ))
                     ) : filteredReport.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                                No records found matching "{searchQuery}"
+                                {searchQuery ? `No records found matching "${searchQuery}"` : "No class or attendance records available."}
                             </TableCell>
                         </TableRow>
                     ) : (
@@ -263,58 +350,43 @@ const AttendanceDashboard = () => {
                                 </TableCell>
                                 <TableCell>
                                     {item.status === 'Taken' ? (
-                                            <Badge variant="secondary" className="bg-green-100 text-green-700 shadow-none border-green-200">
-                                            Submitted
-                                            </Badge>
+                                        <Badge variant="secondary" className="bg-green-100 text-green-700 shadow-none border-green-200">Submitted</Badge>
                                     ) : (
-                                            <Badge variant="outline" className="text-slate-500 bg-slate-50 shadow-none">
-                                            Pending
-                                            </Badge>
+                                        <Badge variant="outline" className="text-slate-500 bg-slate-50 shadow-none">Pending</Badge>
                                     )}
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell text-slate-600">
                                     {item.status === 'Taken' ? item.takenBy : <span className="text-slate-300">-</span>}
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell text-slate-500 text-xs font-mono">
-                                    {item.status === 'Taken' && item.takenAt ? (
-                                        format(new Date(item.takenAt), 'h:mm a')
-                                    ) : (
-                                        <span className="text-slate-300">-</span>
-                                    )}
+                                    {item.status === 'Taken' && item.takenAt ? format(new Date(item.takenAt), 'h:mm a') : <span className="text-slate-300">-</span>}
                                 </TableCell>
                                 <TableCell>
                                     {item.status === 'Taken' ? (
                                         <div className="flex items-center gap-3 text-sm">
                                             <div className="flex items-center gap-1.5" title="Present">
                                                 <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-                                                <span className="font-medium text-slate-700">{item.stats.present}</span>
+                                                <span className="font-medium text-slate-700">{item.stats?.present || 0}</span>
                                             </div>
                                             <div className="flex items-center gap-1.5" title="Absent">
                                                 <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
-                                                <span className="font-medium text-slate-700">{item.stats.absent}</span>
+                                                <span className="font-medium text-slate-700">{item.stats?.absent || 0}</span>
                                             </div>
-                                           
                                         </div>
                                     ) : (
                                         <span className="text-xs text-slate-400 italic">Waiting for update...</span>
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    {item.status === 'Taken' ? (
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            className="h-8 w-8 p-0 hover:bg-slate-200"
-                                            onClick={() => handleViewDetails(item)}
-                                        >
-                                            <Eye className="h-4 w-4 text-primary" />
-                                            <span className="sr-only">View Details</span>
-                                        </Button>
-                                    ) : (
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 cursor-not-allowed opacity-50">
-                                            <MoreHorizontal className="h-4 w-4 text-slate-300" />
-                                        </Button>
-                                    )}
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className={`h-8 w-8 p-0 ${item.status === 'Taken' ? 'hover:bg-slate-200' : 'cursor-not-allowed opacity-50'}`}
+                                        onClick={() => handleViewDetails(item)}
+                                        disabled={item.status !== 'Taken'}
+                                    >
+                                        {item.status === 'Taken' ? <Eye className="h-4 w-4 text-primary" /> : <MoreHorizontal className="h-4 w-4 text-slate-300" />}
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))
@@ -324,10 +396,9 @@ const AttendanceDashboard = () => {
         </div>
       </Card>
 
-      {/* --- OPTIMIZED STUDENT DETAILS DIALOG --- */}
+      {/* 1. Student Details Dialog (Class View) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-            {/* 1. Dialog Header (Fixed) */}
             <DialogHeader className="p-6 pb-4 border-b bg-white z-10">
                 <div className="flex items-start justify-between">
                     <div>
@@ -344,14 +415,12 @@ const AttendanceDashboard = () => {
                     </div>
                 </div>
 
-                {/* Filters Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6">
-                    {/* Status Tabs */}
                     <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg self-start">
                          {['All', 'Present', 'Absent'].map((status) => {
                              const count = status === 'All' 
                                 ? selectedClass?.details?.records?.length 
-                                : selectedClass?.stats?.[status.toLowerCase()];
+                                : (status === 'Present' ? selectedClass?.stats?.present : selectedClass?.stats?.absent);
                              
                              const isActive = statusFilter === status;
                              
@@ -359,13 +428,7 @@ const AttendanceDashboard = () => {
                                 <button
                                     key={status}
                                     onClick={() => setStatusFilter(status)}
-                                    className={`
-                                        px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2
-                                        ${isActive 
-                                            ? 'bg-white text-primary shadow-sm' 
-                                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-                                        }
-                                    `}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${isActive ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
                                 >
                                     {status}
                                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-primary/10' : 'bg-slate-200'}`}>
@@ -376,7 +439,6 @@ const AttendanceDashboard = () => {
                          })}
                     </div>
 
-                    {/* Search Input */}
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                         <Input 
@@ -389,7 +451,6 @@ const AttendanceDashboard = () => {
                 </div>
             </DialogHeader>
 
-            {/* 2. Scrollable Table Content */}
             <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
                 <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
                     <Table>
@@ -398,24 +459,34 @@ const AttendanceDashboard = () => {
                                 <TableHead className="w-[100px] font-semibold text-slate-700">Roll No</TableHead>
                                 <TableHead className="font-semibold text-slate-700">Student Name</TableHead>
                                 <TableHead className="font-semibold text-slate-700">Status</TableHead>
-                                <TableHead className="font-semibold text-slate-700">Remark</TableHead>
+                                {/* NEW ACTION COLUMN */}
+                                <TableHead className="text-right font-semibold text-slate-700">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {dialogStudents.length > 0 ? (
-                                dialogStudents.map((record) => (
-                                    <TableRow key={record._id} className={record.status === 'Absent' ? 'bg-red-50/40 hover:bg-red-50/60' : 'hover:bg-slate-50'}>
+                                dialogStudents.map((record, index) => (
+                                    <TableRow key={record._id || index} className={record.status === 'Absent' ? 'bg-red-50/40 hover:bg-red-50/60' : 'hover:bg-slate-50'}>
                                         <TableCell className="font-mono font-medium text-slate-600">
-                                            #{record.student?.rollNumber || "N/A"}
+                                            #{record.rollNumber || "N/A"}
                                         </TableCell>
                                         <TableCell className="font-medium text-slate-800">
-                                            {record.student?.name || "Unknown"}
+                                            {record.name || "Unknown"}
                                         </TableCell>
                                         <TableCell>
                                             {getStatusBadge(record.status)}
                                         </TableCell>
-                                        <TableCell className="text-slate-500 text-sm max-w-[200px] truncate">
-                                            {record.remark || <span className="text-slate-300">-</span>}
+                                        {/* NEW ACTION BUTTON */}
+                                        <TableCell className="text-right">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm"
+                                                className="text-primary hover:text-primary hover:bg-primary/10 border-slate-200"
+                                                onClick={() => handleViewStudentHistory(record)}
+                                            >
+                                                <History className="h-4 w-4 mr-2" />
+                                                History
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -428,6 +499,91 @@ const AttendanceDashboard = () => {
                                         </div>
                                     </TableCell>
                                 </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 2. NEW: Student History Dialog */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50">
+            <DialogHeader className="p-6 border-b bg-white">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            {selectedStudent?.name}'s History
+                        </DialogTitle>
+                        <p className="text-sm text-slate-500 mt-1">
+                            Roll Number: #{selectedStudent?.rollNumber} • Class {selectedClass?.className}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Individual Student Stats */}
+                {!loadingHistory && studentHistoryData.length > 0 && (
+                    <div className="flex gap-4 mt-6">
+                        <div className="bg-slate-50 border rounded-lg p-3 flex-1 flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-500 flex items-center gap-1.5"><TrendingUp size={16}/> Total Classes</span>
+                            <span className="text-lg font-bold text-slate-700">{historyStats.total}</span>
+                        </div>
+                        <div className="bg-green-50 border border-green-100 rounded-lg p-3 flex-1 flex items-center justify-between">
+                            <span className="text-sm font-medium text-green-700">Present</span>
+                            <span className="text-lg font-bold text-green-700">{historyStats.present}</span>
+                        </div>
+                        <div className="bg-red-50 border border-red-100 rounded-lg p-3 flex-1 flex items-center justify-between">
+                            <span className="text-sm font-medium text-red-700">Absent</span>
+                            <span className="text-lg font-bold text-red-700">{historyStats.absent}</span>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex-1 flex items-center justify-between">
+                            <span className="text-sm font-medium text-blue-700">Attendance</span>
+                            <span className="text-lg font-bold text-blue-700">{historyStats.percentage}%</span>
+                        </div>
+                    </div>
+                )}
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto p-6">
+                <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
+                    <Table>
+                        <TableHeader className="bg-slate-50">
+                            <TableRow>
+                                <TableHead className="w-[150px]">Date</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Marked By</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loadingHistory ? (
+                                [...Array(4)].map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell><div className="h-4 w-24 bg-slate-200 rounded animate-pulse" /></TableCell>
+                                        <TableCell><div className="h-6 w-16 bg-slate-200 rounded animate-pulse" /></TableCell>
+                                        <TableCell className="flex justify-end"><div className="h-4 w-32 bg-slate-200 rounded animate-pulse" /></TableCell>
+                                    </TableRow>
+                                ))
+                            ) : studentHistoryData.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-32 text-center text-slate-400">
+                                        No attendance history found for this student.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                studentHistoryData.map((record) => (
+                                    <TableRow key={record.id}>
+                                        <TableCell className="font-medium text-slate-700">
+                                            {format(new Date(record.date), 'MMM dd, yyyy')}
+                                        </TableCell>
+                                        <TableCell>
+                                            {getStatusBadge(record.status)}
+                                        </TableCell>
+                                        <TableCell className="text-right text-sm text-slate-500">
+                                            {record.teacher}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
                             )}
                         </TableBody>
                     </Table>
