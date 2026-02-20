@@ -5,14 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,7 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { toast } from 'sonner';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, BookOpen } from 'lucide-react';
 
 const ManageSubjects = () => {
   const [subjects, setSubjects] = useState([]);
@@ -65,7 +57,8 @@ const ManageSubjects = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 flex flex-col h-full">
+      {/* Header and Add Button */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Manage Subjects</h2>
@@ -80,7 +73,7 @@ const ManageSubjects = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Subject</DialogTitle>
-              <DialogDescription>Create a new subject.</DialogDescription>
+              <DialogDescription>Create a new subject to add to the curriculum.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-2">
@@ -104,44 +97,62 @@ const ManageSubjects = () => {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Subjects List</CardTitle>
-          <CardDescription>All subjects currently offered.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Subject Name</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={1} className="text-center py-8">
-                      <Loader2 className="mx-auto animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : subjects.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={1} className="text-center py-8 text-muted-foreground">
-                      No subjects found. Add your first subject.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  subjects.map((sub) => (
-                    <TableRow key={sub._id}>
-                      <TableCell className="font-medium">{sub.name}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+      {/* Content Area */}
+      <div className="flex-1">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <Loader2 className="h-10 w-10 animate-spin mb-4 text-primary" />
+            <p>Loading subjects...</p>
           </div>
-        </CardContent>
-      </Card>
+        ) : subjects.length === 0 ? (
+          <Card className="border-dashed shadow-none">
+            <CardContent className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+              <div className="bg-muted/50 p-4 rounded-full mb-4">
+                <BookOpen size={32} className="opacity-50" />
+              </div>
+              <h3 className="text-lg font-medium text-foreground mb-1">No subjects found</h3>
+              <p className="mb-4">You haven't added any subjects yet.</p>
+              <Button variant="outline" onClick={() => setIsDialogOpen(true)} className="gap-2">
+                <Plus size={16} /> Add your first subject
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {subjects.map((sub) => (
+              <Card 
+                key={sub._id} 
+                className="group hover:shadow-md hover:border-primary/50 transition-all duration-300 overflow-hidden cursor-default flex flex-col"
+              >
+                <CardContent className="p-6 flex flex-col items-center justify-center text-center flex-1 gap-4">
+                  {/* Subject SVG Avatar */}
+                  <div className="relative">
+                    {sub.subjectIcon ? (
+                      <div 
+                        className="w-20 h-20 rounded-full overflow-hidden shadow-sm border border-border group-hover:scale-105 transition-transform duration-300"
+                        // Inject the SVG string directly into the DOM
+                        dangerouslySetInnerHTML={{ __html: sub.subjectIcon }} 
+                      />
+                    ) : (
+                      // Fallback just in case older subjects don't have an icon yet
+                      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border border-border group-hover:scale-105 transition-transform duration-300">
+                        <BookOpen size={32} className="text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Subject Name */}
+                  <div className="w-full">
+                    <h3 className="font-semibold text-lg line-clamp-2 leading-tight">
+                      {sub.name}
+                    </h3>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
