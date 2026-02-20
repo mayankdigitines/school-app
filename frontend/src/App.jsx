@@ -5,8 +5,7 @@ import Login from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
 import SuperAdminLayout from './layouts/SuperAdminLayout';
 import SchoolProfile from './pages/SchoolProfile';
-import ManageClasses from './pages/ManageClasses';
-import ManageSubjects from './pages/ManageSubjects';
+import ManageAcademics from './pages/ManageAcademics'; 
 import ManageTeachers from './pages/ManageTeachers';
 import ManageNotices from './pages/ManageNotices';
 import ActivityLogs from './pages/ActivityLogs';
@@ -66,10 +65,9 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<SchoolProfile />} />
-          <Route path="classes" element={<ManageClasses />} />
+          <Route path="academics" element={<ManageAcademics />} />
           <Route path="attendance" element={<AttendanceDashboard />} /> 
           <Route path="students" element={<ManageStudents />} />
-          <Route path="subjects" element={<ManageSubjects />} />
           <Route path="teachers" element={<ManageTeachers />} />
           <Route path="notices" element={<ManageNotices />} />
           <Route path="logs" element={<ActivityLogs />} />
