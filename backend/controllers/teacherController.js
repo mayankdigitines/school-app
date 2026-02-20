@@ -6,6 +6,7 @@ import Teacher from '../models/Teacher.js';
 import AppError from '../utils/appError.js';
 import Class from '../models/Class.js';
 import Attendance from '../models/Attendance.js';
+import Message from '../models/Message.js';
 
 // --- DASHBOARD / HOME ---
 
@@ -608,6 +609,84 @@ export const changePassword = async (req, res, next) => {
       message: 'Password updated successfully'
     });
 
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// --- MESSAGING SYSTEM ---
+
+export const sendMessageToParent = async (req, res, next) => {
+  try {
+    const { parentId, content } = req.body;
+
+    if (!parentId || !content) {
+      return next(new AppError('Please provide parentId and message content.', 400));
+    }
+
+    // Security Check: Only allow class teachers to message parents of students in their class
+    if (!req.user.assignedClass) {
+       return next(new AppError('You must be assigned as a Class Teacher to message parents.', 403));
+    }
+
+    // Verify this parent has a child in the teacher's assigned class
+    const childInClass = await Student.findOne({
+      parent: parentId,
+      studentClass: req.user.assignedClass
+    });
+
+    if (!childInClass) {
+      return next(new AppError('This parent does not have a child in your assigned class.', 403));
+    }
+
+    const message = await Message.create({
+      school: req.user.school,
+      sender: req.user._id,
+      senderModel: 'Teacher',
+      receiver: parentId,
+      receiverModel: 'Parent',
+      content
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Message sent successfully to the parent.',
+      data: { message }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMessagesWithParent = async (req, res, next) => {
+  try {
+    const { parentId } = req.params;
+
+    if (!parentId) {
+      return next(new AppError('Parent ID is required.', 400));
+    }
+
+    // Fetch conversation between this teacher and the specific parent
+    const messages = await Message.find({
+      school: req.user.school,
+      $or: [
+        { sender: req.user._id, receiver: parentId },
+        { sender: parentId, receiver: req.user._id }
+      ]
+    }).sort({ createdAt: 1 }); // Sorted chronologically for chat interface
+
+    // Optionally mark unread messages from this parent as read
+    await Message.updateMany(
+        { sender: parentId, receiver: req.user._id, isRead: false },
+        { isRead: true }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      results: messages.length,
+      data: { messages }
+    });
   } catch (error) {
     next(error);
   }

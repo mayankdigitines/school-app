@@ -10,7 +10,9 @@ import {
     getTeacherClasses,
     markAttendance,
     getAttendanceHistory,
-    changePassword
+    changePassword,
+    sendMessageToParent,     
+    getMessagesWithParent
 } from '../controllers/teacherController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 import upload from '../utils/fileUpload.js';
@@ -437,5 +439,11 @@ router.get('/attendance', getAttendanceHistory);
 
 
 router.put('/change-password', changePassword);
+
+router.post('/messages/send', sendMessageToParent);
+
+
+router.get('/messages/:parentId', getMessagesWithParent);
+
 
 export default router;
