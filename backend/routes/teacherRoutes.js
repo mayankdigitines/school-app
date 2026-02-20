@@ -10,6 +10,7 @@ import {
     getTeacherClasses,
     markAttendance,
     getAttendanceHistory,
+    changePassword
 } from '../controllers/teacherController.js';
 import { protect, restrictTo } from '../middleware/authMiddleware.js';
 import upload from '../utils/fileUpload.js';
@@ -433,5 +434,8 @@ router.post('/attendance', markAttendance);
  * description: Attendance history
  */
 router.get('/attendance', getAttendanceHistory);
+
+
+router.put('/change-password', changePassword);
 
 export default router;

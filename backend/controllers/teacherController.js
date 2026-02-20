@@ -569,3 +569,46 @@ export const getAttendanceHistory = async (req, res, next) => {
     next(error);
   }
 };
+
+// Add this export at the bottom of the file
+export const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // 1. Input Validation
+    if (!currentPassword || !newPassword) {
+      return next(new AppError('Please provide both current password and new password.', 400));
+    }
+
+    if (currentPassword === newPassword) {
+      return next(new AppError('New password must be different from the current password.', 400));
+    }
+
+    // 2. Fetch the teacher explicitly selecting the password field (since it is select: false in schema)
+    const teacher = await Teacher.findById(req.user._id).select('+password');
+    if (!teacher) {
+      return next(new AppError('Teacher not found.', 404));
+    }
+
+    // 3. Verify the current password
+    const isMatch = await teacher.matchPassword(currentPassword);
+    if (!isMatch) {
+      return next(new AppError('Incorrect current password.', 401));
+    }
+
+    // 4. Update to the new password
+    teacher.password = newPassword;
+    
+    // The pre('save') hook in Teacher model will automatically hash the new password
+    await teacher.save(); 
+
+    // 5. Send Success Response
+    res.status(200).json({
+      status: 'success',
+      message: 'Password updated successfully'
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
