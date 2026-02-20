@@ -52,6 +52,73 @@ const createSendToken = async (user, role, statusCode, res) => {
   res.status(statusCode).json(response);
 };
 
+// // --- LOGIN CONTROLLER ---
+// export const login = async (req, res, next) => {
+//   try {
+//     let { username, password, role, schoolCode } = req.body;
+
+//     // 1) Basic Input Validation
+//     if (!username || !password || !role) {
+//       return next(new AppError('Please provide credentials (username/password) and role.', 400));
+//     }
+
+//     username = username.trim();
+//     role = role.trim();
+
+//     let user;
+
+//     // 2) Role-Based Login Logic
+//     if (role === 'SuperAdmin' || role === 'SchoolAdmin') {
+//       const cleanEmail = username.toLowerCase();
+//       user = await Admin.findOne({ email: cleanEmail }).select('+password').populate('school');
+//     } 
+//     else if (role === 'Teacher') {
+//       // A. Require School Code
+//       if (!schoolCode) {
+//         return next(new AppError('School Code is required for Teacher login.', 400));
+//       }
+//       // B. Find School
+//       const school = await School.findOne({ schoolCode }).select('_id name');
+//       if (!school) {
+//         return next(new AppError('Invalid School Code.', 404));
+//       }
+//       // C. Find Teacher Scoped to School
+//       user = await Teacher.findOne({ 
+//         username: username, 
+//         school: school._id 
+//       }).select('+password').populate('school');
+
+//       if (!user) {
+//         return next(new AppError('Invalid credentials or you do not belong to this school.', 401));
+//       }
+//     } 
+//     else if (role === 'Parent') {
+//       user = await Parent.findOne({ phone: username }).select('+password');
+//     } 
+//     else {
+//       return next(new AppError('Invalid role specified', 400));
+//     }
+
+//     // 3) Password Verification
+//     if (!user || !(await user.matchPassword(password))) {
+//       return next(new AppError('Incorrect credentials', 401));
+//     }
+    
+//     // 4) Integrity Check for SchoolAdmin
+//     if (role === 'SchoolAdmin' && user.role === 'SchoolAdmin' && !user.school) {
+//          return next(new AppError('Account configuration error: No school linked.', 500));
+//     }
+
+//     // 5) Generate & Send Tokens
+//     const finalRole = user.role || role; 
+//     await createSendToken(user, finalRole, 200, res);
+
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
 // --- LOGIN CONTROLLER ---
 export const login = async (req, res, next) => {
   try {
@@ -62,6 +129,7 @@ export const login = async (req, res, next) => {
       return next(new AppError('Please provide credentials (username/password) and role.', 400));
     }
 
+    // Sanitize basic inputs
     username = username.trim();
     role = role.trim();
 
@@ -77,14 +145,21 @@ export const login = async (req, res, next) => {
       if (!schoolCode) {
         return next(new AppError('School Code is required for Teacher login.', 400));
       }
+      
+      // FIX: Sanitize school code to match the DB schema (Trim and Uppercase)
+      const cleanSchoolCode = schoolCode.trim().toUpperCase();
+
       // B. Find School
-      const school = await School.findOne({ schoolCode }).select('_id name');
+      const school = await School.findOne({ schoolCode: cleanSchoolCode }).select('_id name');
+
       if (!school) {
-        return next(new AppError('Invalid School Code.', 404));
+        return next(new AppError('Invalid School Code. Please check and try again.', 404));
       }
+      
       // C. Find Teacher Scoped to School
+      // Using case-insensitive regex for username to prevent accidental login failures due to casing
       user = await Teacher.findOne({ 
-        username: username, 
+        username: { $regex: new RegExp(`^${username}$`, 'i') }, 
         school: school._id 
       }).select('+password').populate('school');
 
@@ -101,7 +176,7 @@ export const login = async (req, res, next) => {
 
     // 3) Password Verification
     if (!user || !(await user.matchPassword(password))) {
-      return next(new AppError('Incorrect credentials', 401));
+      return next(new AppError('Incorrect username or password', 401));
     }
     
     // 4) Integrity Check for SchoolAdmin

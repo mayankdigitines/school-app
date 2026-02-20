@@ -9,236 +9,6 @@ import Attendance from '../models/Attendance.js';
 
 // --- DASHBOARD / HOME ---
 
-// export const getTeacherHome = async (req, res, next) => {
-//   try {
-//     // 1) Fetch Teacher Data with populated fields
-//     const teacher = await Teacher.findById(req.user._id)
-//       .populate('school', 'name schoolCode contactInfo')
-//       .populate('assignedClass', 'className')
-//       .populate('subjects', 'name')
-//       .select('-password -__v')
-//       .lean();
-
-//     if (!teacher) {
-//       return next(new AppError('Teacher profile not found.', 404));
-//     }
-
-//     // 2) Fetch Classes this teacher teaches as a Subject Teacher
-//     const teachingClasses = await Class.find({ 'subjectTeachers.teacher': teacher._id })
-//       .select('className')
-//       .lean();
-
-//     let classTeacherData = null;
-
-//     if (teacher.assignedClass) {
-//       const pendingRequestsCount = await StudentRequest.countDocuments({
-//         requestedClass: teacher.assignedClass._id,
-//         status: 'Pending'
-//       });
-
-//       classTeacherData = {
-//         classId: teacher.assignedClass._id,
-//         className: teacher.assignedClass.className,
-//         pendingRequests: pendingRequestsCount
-//       };
-//     }
-
-//     // 4) Fetch Latest 5 Homeworks POSTED BY THIS TEACHER
-//     // Optimization: Filter by teacher: req.user._id
-//     const myLatestHomeworks = await Homework.find({ 
-//         teacher: req.user._id,
-//         school: req.user.school 
-//       })
-//       .sort({ createdAt: -1 })
-//       .limit(5)
-//       .populate('class', 'className')
-//       .populate('subject', 'name')
-//       .lean();
-
-//      const mylatestNotices = await Notice.find({ 
-//         school: req.user.school,
-//         audience: { $in: ['All', 'Teachers'] } 
-//       })
-//       .sort({ createdAt: -1 })
-//       .limit(5)
-//       .select('title content audience postedBy createdAt')
-//       .lean()
-      
-//     const formattedData = {
-//       teacherId: teacher._id,
-//       name: teacher.name,
-//       username: teacher.username,
-//       school: {
-//         schoolId: teacher.school._id,
-//         schoolName: teacher.school.name,
-//         schoolCode: teacher.school.schoolCode
-//       },
-//       teachingClasses: teachingClasses.map(cls => ({
-//         classId: cls._id,
-//         className: cls.className
-//       })),
-//       assignedClass: classTeacherData, 
-//       subjects: teacher.subjects.map(sub => ({ subjectName: sub.name, subjectId: sub._id })),
-//       // Now returns only homeworks posted by the logged-in teacher
-//       myRecentHomeworks: myLatestHomeworks.map(hw => ({
-//         homeworkId: hw._id,
-//         description: hw.description,
-//         subject: hw.subject?.name || 'N/A',
-//         className: hw.class?.className || 'N/A',
-//         dueDate: hw.dueDate,
-//         createdAt: hw.createdAt
-//       })),
-//       recentNotices: mylatestNotices.map(notice => ({
-//         id: notice._id,
-//         title: notice.title,
-//         content: notice.content.substring(0, 100) + '...', // Preview only
-//         audience: notice.audience,
-//         postedBy: notice.postedBy?.role === 'SchoolAdmin' ? 'Admin' : notice.postedBy?.name,
-//         createdAt: notice.createdAt,
-//       })),
-//       createdAt: teacher.createdAt
-//     };
-
-//     res.status(200).json({
-//       status: 'success',
-//       data: { teacher: formattedData }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-
-// --- DASHBOARD / HOME ---
-
-// export const getTeacherHome = async (req, res, next) => {
-//   try {
-//     // 1) Fetch Teacher Data with populated fields
-//     const teacher = await Teacher.findById(req.user._id)
-//       .populate('school', 'name schoolCode contactInfo')
-//       .populate('assignedClass', 'className')
-//       .populate('subjects', 'name subjectIcon') // [ADDED] Populate subjectIcon for dashboard display 
-//       .select('-password -__v')
-//       .lean();
-
-//     if (!teacher) {
-//       return next(new AppError('Teacher profile not found.', 404));
-//     }
-
-//     // 2) Fetch Classes this teacher teaches as a Subject Teacher
-//     const teachingClasses = await Class.find({ 'subjectTeachers.teacher': teacher._id })
-//       .select('className')
-//       .lean();
-
-//     let classTeacherData = null;
-
-//     // 3) Process Assigned Class Data (Class Teacher Role)
-//     if (teacher.assignedClass) {
-//       // a. Fetch Pending Requests Count
-//       const pendingRequestsCount = await StudentRequest.countDocuments({
-//         requestedClass: teacher.assignedClass._id,
-//         status: 'Pending'
-//       });
-
-//       // b. Calculate Today's Attendance Percentage
-//       // Create a date object for "today" at 00:00:00 to match how it's stored in markAttendance
-//       const today = new Date();
-//       today.setHours(0, 0, 0, 0);
-
-//       const attendanceRecord = await Attendance.findOne({
-//         class: teacher.assignedClass._id,
-//         date: today
-//       }).select('presentCount absentCount').lean();
-
-//       let attendancePercentage = ""; // Default to empty string if not taken
-
-//       if (attendanceRecord) {
-//         const totalStudents = attendanceRecord.presentCount + attendanceRecord.absentCount;
-        
-//         if (totalStudents > 0) {
-//           const percent = (attendanceRecord.presentCount / totalStudents) * 100;
-//           // Format: remove decimals if whole number (e.g., "100%", "95.5%")
-//           attendancePercentage = +percent.toFixed(1) + "%"; 
-//         } else {
-//           attendancePercentage = "0%";
-//         }
-//       }
-
-//       classTeacherData = {
-//         classId: teacher.assignedClass._id,
-//         className: teacher.assignedClass.className,
-//         pendingRequests: pendingRequestsCount,
-//         todaysAttendance: attendancePercentage // [ADDED] Returns "XX%" or ""
-//       };
-//     }
-
-//     // 4) Fetch Latest 5 Homeworks POSTED BY THIS TEACHER
-//     const myLatestHomeworks = await Homework.find({ 
-//         teacher: req.user._id,
-//         school: req.user.school 
-//       })
-//       .sort({ createdAt: -1 })
-//       .limit(5)
-//       .populate('class', 'className')
-//     .populate('subjects', 'name subjectIcon')
-//       .lean();
-
-//      const mylatestNotices = await Notice.find({ 
-//         school: req.user.school,
-//         audience: { $in: ['All', 'Teachers'] } 
-//       })
-//       .sort({ createdAt: -1 })
-//       .limit(5)
-//       .select('title content audience postedBy createdAt')
-//       .lean();
-      
-//     const formattedData = {
-//       teacherId: teacher._id,
-//       name: teacher.name,
-//       username: teacher.username,
-//       school: {
-//         schoolId: teacher.school._id,
-//         schoolName: teacher.school.name,
-//         schoolCode: teacher.school.schoolCode
-//       },
-//       teachingClasses: teachingClasses.map(cls => ({
-//         classId: cls._id,
-//         className: cls.className
-//       })),
-//       assignedClass: classTeacherData, 
-//       // want subject icon too? then we need to store icon path in subject model and populate it here
-//       subjects: teacher.subjects.map(sub => ({ subjectName: sub.name, subjectId: sub._id, subjectIcon: sub.subjectIcon || null })),
-//       myRecentHomeworks: myLatestHomeworks.map(hw => ({
-//         homeworkId: hw._id,
-//         description: hw.description,
-//         subject: hw.subject?.name || 'N/A',
-//         className: hw.class?.className || 'N/A',
-//         dueDate: hw.dueDate,
-//         createdAt: hw.createdAt
-//       })),
-//       recentNotices: mylatestNotices.map(notice => ({
-//         id: notice._id,
-//         title: notice.title,
-//         content: notice.content.substring(0, 100) + '...', // Preview only
-//         audience: notice.audience,
-//         postedBy: notice.postedBy?.role === 'SchoolAdmin' ? 'Admin' : notice.postedBy?.name,
-//         createdAt: notice.createdAt,
-//       })),
-//       createdAt: teacher.createdAt
-//     };
-
-//     res.status(200).json({
-//       status: 'success',
-//       data: { teacher: formattedData }
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-
-
-
 export const getTeacherHome = async (req, res, next) => {
   try {
     // 1) Fetch Teacher Data with populated fields
@@ -276,23 +46,10 @@ export const getTeacherHome = async (req, res, next) => {
         date: today
       }).select('presentCount absentCount').lean();
 
-      let attendancePercentage = ""; 
-
-      if (attendanceRecord) {
-        const totalStudents = attendanceRecord.presentCount + attendanceRecord.absentCount;
-        if (totalStudents > 0) {
-          const percent = (attendanceRecord.presentCount / totalStudents) * 100;
-          attendancePercentage = +percent.toFixed(1) + "%"; 
-        } else {
-          attendancePercentage = "0%";
-        }
-      }
-
       classTeacherData = {
         classId: teacher.assignedClass._id,
         className: teacher.assignedClass.className,
-        pendingRequests: pendingRequestsCount,
-        todaysAttendance: attendancePercentage
+        pendingRequests: pendingRequestsCount
       };
     }
 
@@ -345,7 +102,6 @@ export const getTeacherHome = async (req, res, next) => {
         description: hw.description,
         subject: hw.subject?.name || 'N/A',
         className: hw.class?.className || 'N/A',
-        dueDate: hw.dueDate,
         createdAt: hw.createdAt
       })),
       recentNotices: mylatestNotices.map(notice => ({
@@ -795,11 +551,17 @@ export const getAttendanceHistory = async (req, res, next) => {
     const history = await Attendance.find(query)
         .sort({ date: -1 }) // Latest first
         .lean();
+      
+    const formattedHistory = history.map(record => ({
+      ...record,
+        attendanceId: record._id,
+        date: new Date(record.date).toDateString({timezone: 'Asia/Kolkata'}),
+    }));
 
     res.status(200).json({
         status: 'success',
         results: history.length,
-        data: { history }
+        data: { history: formattedHistory }
     });
 
   } catch (error) {

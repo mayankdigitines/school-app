@@ -25,10 +25,6 @@ const homeworkSchema = new mongoose.Schema({
     ref: 'School',
     required: true,
   },
-  dueDate: {
-    type: Date,
-    required: true,
-  },
   attachments: [{
     type: String, // URLs or file paths
   }],
