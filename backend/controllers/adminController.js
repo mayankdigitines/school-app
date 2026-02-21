@@ -143,145 +143,42 @@ export const addClass = async (req, res, next) => {
 
 // --- TEACHER MANAGEMENT (UPDATED) ---
 
-// export const createTeacher = async (req, res, next) => {
-//   // Start a transaction session
-//   const session = await mongoose.startSession();
-//   session.startTransaction();
-
-//   try {
-//     // 1. Get Inputs (No email/phone required)
-//     // subjects: Array of Subject IDs
-//     // teachingClasses: Array of Class IDs where this teacher teaches the subjects
-//     // assignedClassId: Class ID if they are a Class Teacher
-//     const { name, password, subjects, assignedClassId, teachingClasses } = req.body;
-//     const schoolId = req.user.school;
-
-//     // 2. Validation
-//     if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
-//         throw new AppError('Please select at least one subject.', 400);
-//     }
-    
-//     // 3. Generate Username & Create Teacher Object
-//     const username = await generateTeacherUsername(name);
-    
-//     const newTeacher = new Teacher({
-//       name,
-//       username,
-//       password,
-//       subjects, // Stores ObjectIds now
-//       school: schoolId,
-//     });
-
-//     // 4. Handle Class Teacher Logic
-//     if (assignedClassId) {
-//         if (!assignedClassId) {
-//             throw new AppError('Please select a class to assign as Class Teacher.', 400);
-//         }
-
-//         // Check availability strictly within transaction
-//         const classDoc = await Class.findOne({ _id: assignedClassId, school: schoolId }).session(session);
-        
-//         if (!classDoc) throw new AppError('Invalid Class selected for Class Teacher.', 404);
-        
-//         if (classDoc.classTeacher) {
-//             throw new AppError(`Class ${classDoc.grade}-${classDoc.section} already has a Class Teacher.`, 409);
-//         }
-
-//         // Link them
-//         classDoc.classTeacher = newTeacher._id;
-//         await classDoc.save({ session });
-
-//         newTeacher.assignedClass = classDoc._id;
-//     }
-
-//     // Save teacher first to generate _id
-//     await newTeacher.save({ session });
-
-//     // 5. Handle Subject Teacher Logic (Teaching Classes)
-//     if (teachingClasses && Array.isArray(teachingClasses) && teachingClasses.length > 0) {
-//         // We need to update each class to say: "This teacher teaches these subjects here"
-        
-//         for (const classId of teachingClasses) {
-//             const classDoc = await Class.findOne({ _id: classId, school: schoolId }).session(session);
-            
-//             if (classDoc) {
-//                 // Prepare new assignments
-//                 const newAssignments = subjects.map(subjectId => ({
-//                     subject: subjectId,
-//                     teacher: newTeacher._id
-//                 }));
-
-//                 // Remove OLD teachers for these specific subjects to avoid duplicates/conflicts
-//                 // We filter OUT any existing entry where the subject matches one of the new teacher's subjects
-//                 classDoc.subjectTeachers = classDoc.subjectTeachers.filter(
-//                     st => !subjects.includes(st.subject.toString())
-//                 );
-
-//                 // Add NEW assignments
-//                 classDoc.subjectTeachers.push(...newAssignments);
-
-//                 await classDoc.save({ session });
-//             }
-//         }
-//     }
-
-//     // 6. Commit Transaction
-//     await session.commitTransaction();
-
-//     // Hide password before response
-//     newTeacher.password = undefined;
-
-//     res.status(201).json({
-//       status: 'success',
-//       data: {
-//         teacher: newTeacher,
-//       },
-//     });
-
-//   } catch (error) {
-//     // Abort transaction on any error
-//     await session.abortTransaction();
-    
-//     if (error.code === 11000 && error.keyPattern && error.keyPattern.username) {
-//         return next(new AppError('System error generating username. Please try again.', 400));
-//     }
-//     next(error);
-//   } finally {
-//     session.endSession();
-//   }
-// };
-
-
 export const createTeacher = async (req, res, next) => {
   try {
     // 1. Get Inputs
-    const { name, password, subjects, assignedClassId, teachingClasses } = req.body;
+    // assignments is an array of objects: [{ classId: '...', subjectId: '...' }]
+    const { name, password, assignedClassId, assignments, isClassTeacher } = req.body;
     const schoolId = req.user.school;
 
     // 2. Validation
-    if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
-      throw new AppError('Please select at least one subject.', 400);
+    if (!name || !password) {
+      throw new AppError('Name and Password are required.', 400);
     }
 
-    // 3. Generate Username & Create Teacher Object
+    // 3. Extract unique subject IDs for the Teacher model
+    // This ensures if a teacher teaches Science in 5th and Science in 6th, 'Science' is only saved once in their profile.
+    const validAssignments = Array.isArray(assignments) ? assignments.filter(a => a.classId && a.subjectId) : [];
+    const uniqueSubjectIds = [...new Set(validAssignments.map(a => a.subjectId))];
+
+    // 4. Generate Username & Create Teacher Object
     const username = await generateTeacherUsername(name);
 
     const newTeacher = new Teacher({
       name,
       username,
       password,
-      subjects,
+      subjects: uniqueSubjectIds,
       school: schoolId,
     });
 
-    // 4. Handle Class Teacher Logic
-    if (assignedClassId) {
+    // 5. Handle Class Teacher Logic (Administrative Role)
+    if (isClassTeacher && assignedClassId) {
       const classDoc = await Class.findOne({ _id: assignedClassId, school: schoolId });
 
       if (!classDoc) throw new AppError('Invalid Class selected for Class Teacher.', 404);
 
       if (classDoc.classTeacher) {
-        throw new AppError(`Class ${classDoc.grade}-${classDoc.section} already has a Class Teacher.`, 409);
+        throw new AppError(`Class ${classDoc.className} already has a Class Teacher.`, 409);
       }
 
       // Link them
@@ -294,26 +191,35 @@ export const createTeacher = async (req, res, next) => {
     // Save teacher first to generate _id
     await newTeacher.save();
 
-    // 5. Handle Subject Teacher Logic (Teaching Classes)
-    if (teachingClasses && Array.isArray(teachingClasses) && teachingClasses.length > 0) {
-      for (const classId of teachingClasses) {
+    // 6. Handle Specific Subject-Class Assignments
+    if (validAssignments.length > 0) {
+      // Group assignments by classId to minimize database calls
+      // Result: { "classId1": Set("subjId1", "subjId2"), "classId2": Set("subjId1") }
+      const assignmentsByClass = validAssignments.reduce((acc, curr) => {
+        if (!acc[curr.classId]) acc[curr.classId] = new Set();
+        acc[curr.classId].add(curr.subjectId);
+        return acc;
+      }, {});
+
+      // Update each class with the specific subjects taught by this new teacher
+      for (const [classId, subjectIdsSet] of Object.entries(assignmentsByClass)) {
+        const subjectIds = Array.from(subjectIdsSet);
         const classDoc = await Class.findOne({ _id: classId, school: schoolId });
 
         if (classDoc) {
+          // Remove old teachers for these specific subjects in this class to avoid duplicates
+          classDoc.subjectTeachers = classDoc.subjectTeachers.filter(
+            st => !subjectIds.includes(st.subject.toString())
+          );
+
           // Prepare new assignments
-          const newAssignments = subjects.map(subjectId => ({
+          const newSubjectAssignments = subjectIds.map(subjectId => ({
             subject: subjectId,
             teacher: newTeacher._id,
           }));
 
-          // Remove OLD teachers for these specific subjects to avoid duplicates/conflicts
-          classDoc.subjectTeachers = classDoc.subjectTeachers.filter(
-            st => !subjects.includes(st.subject.toString())
-          );
-
-          // Add NEW assignments
-          classDoc.subjectTeachers.push(...newAssignments);
-
+          // Push and save
+          classDoc.subjectTeachers.push(...newSubjectAssignments);
           await classDoc.save();
         }
       }
