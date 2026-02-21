@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -7,20 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, ShieldCheck, GraduationCap, School, Users } from 'lucide-react';
+import { Loader2, ShieldCheck, GraduationCap, School, Users, Eye, EyeOff, Building2 } from 'lucide-react';
 
 // Map roles to specific icons and titles for a better UI experience
 const ROLE_CONFIG = {
   SuperAdmin: { title: "Super Admin Portal", icon: ShieldCheck, color: "text-red-600" },
-  SchoolAdmin: { title: "School Admin Login", icon: Building2, color: "text-blue-600" }, // Ensure Building2 is imported or use School
+  SchoolAdmin: { title: "School Admin Login", icon: Building2, color: "text-blue-600" }, 
   Teacher: { title: "Teacher Portal", icon: GraduationCap, color: "text-green-600" },
   Parent: { title: "Parent Access", icon: Users, color: "text-purple-600" },
 };
 
-// Fallback icon if needed
-import { Building2 } from 'lucide-react';
-
 const Login = ({ allowedRole }) => {
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -41,7 +38,6 @@ const Login = ({ allowedRole }) => {
     setLoading(true);
 
     try {
-      // Use the fixed role if provided, otherwise generic login (though generic is removed per your request)
       const roleToSubmit = allowedRole; 
 
       if (!roleToSubmit) {
@@ -56,8 +52,8 @@ const Login = ({ allowedRole }) => {
       // Intelligent Redirect based on Role
       if (roleToSubmit === 'SuperAdmin') navigate('/super-admin/schools');
       else if (roleToSubmit === 'SchoolAdmin') navigate('/dashboard');
-      else if (roleToSubmit === 'Teacher') navigate('/teacher/dashboard'); // Example route
-      else if (roleToSubmit === 'Parent') navigate('/parent/dashboard');   // Example route
+      else if (roleToSubmit === 'Teacher') navigate('/teacher/dashboard'); 
+      else if (roleToSubmit === 'Parent') navigate('/parent/dashboard');   
       else navigate('/');
 
     } catch (error) {
@@ -94,22 +90,23 @@ const Login = ({ allowedRole }) => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
+              <div className="relative">
               <Input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
                 required
               />
+              <Button type="button" variant="transparent" size="icon" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer">
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </Button>
+              </div>
             </div>
-            
-            {/* Hidden Submit Button for accessibility */}
-            <button type="submit" className="hidden" disabled={loading} />
-            
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Authenticating...</> : 'Sign In'}
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing In...</> : 'Sign In'}
             </Button>
           </form>
         </CardContent>
